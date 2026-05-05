@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'deeagrawal078@gmail.com' && 
+        request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprints
+    function isValidProduct(data) {
+      return data.keys().hasAll(['type', 'category', 'title', 'desc', 'price', 'seed']) &&
+             data.type in ['pdf', 'site'] &&
+             data.category is string && data.category.size() <= 100 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.desc is string && data.desc.size() <= 2000 &&
+             data.price is string && data.price.size() <= 20 &&
+             data.seed is number &&
+             data.keys().size() <= 14;
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['name']) &&
+             data.name is string && data.name.size() <= 50 &&
+             data.keys().size() == 1;
+    }
+
+    // Collection Rules
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProduct(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidProduct(incoming()) && 
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['type', 'category', 'title', 'desc', 'price', 'original', 'seed', 'isNew', 'isBest', 'pdfUrl', 'imageUrl', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidCategory(incoming());
+      allow update: if isAdmin() && isValidCategory(incoming());
+      allow delete: if isAdmin();
+    }
+  }
+}

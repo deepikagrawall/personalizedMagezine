@@ -1,0 +1,45 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A template product (PDF or Website)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["pdf", "site"] },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "desc": { "type": "string" },
+        "price": { "type": "string" },
+        "original": { "type": "string" },
+        "seed": { "type": "number" },
+        "isNew": { "type": "boolean" },
+        "isBest": { "type": "boolean" },
+        "pdfUrl": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["type", "category", "title", "seed"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all templates"
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of product categories"
+    }
+  }
+}
