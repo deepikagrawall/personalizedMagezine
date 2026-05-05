@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { db } from './lib/firebase';
-import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // --- DATA ---
 
@@ -41,8 +42,9 @@ function useIntersectionObserver() {
 
 // --- COMPONENTS ---
 
-const PreviewModal = ({ product, onClose }: { product: any, onClose: () => void }) => {
+const PreviewModal = ({ product, onClose, onSave }: { product: any, onClose: () => void, onSave: () => void }) => {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const isNetflix = product.type === 'site' && product.title.toLowerCase().includes('netflix');
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -58,7 +60,7 @@ const PreviewModal = ({ product, onClose }: { product: any, onClose: () => void 
 
   if (isPreviewMode && product.type === 'site') {
     return (
-      <div className="fixed inset-0 z-[300] bg-black flex flex-col animate-[modalEnter_0.4s_ease-out]">
+      <div className="fixed inset-0 z-[350] bg-black flex flex-col animate-[modalEnter_0.4s_ease-out]">
         <div className="h-14 bg-[#111] border-b border-white/10 flex items-center justify-between px-6">
           <div className="flex items-center gap-4">
             <span className="text-white font-semibold">{product.title}</span>
@@ -70,17 +72,26 @@ const PreviewModal = ({ product, onClose }: { product: any, onClose: () => void 
           </div>
         </div>
         <div className="flex-1 bg-black relative">
-           <div className="absolute top-8 left-8 z-10 font-black text-[#E50914] text-3xl tracking-tighter italic">NETFLIX</div>
+           {isNetflix && <div className="absolute top-8 left-8 z-10 font-black text-[#E50914] text-3xl tracking-tighter italic">NETFLIX</div>}
            <div className="flex flex-col items-center justify-center h-full">
-              <h3 className="text-white font-light text-5xl mb-12">Who's watching?</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                {["1 Month", "2 Months", "3 Months", "5 Months"].map((l: string, i: number) => (
-                  <div key={i} className="flex flex-col items-center gap-4">
-                     <div className="w-32 h-32 md:w-44 md:h-44 rounded bg-blue-600 hover:ring-4 ring-white transition-all cursor-pointer"></div>
-                     <span className="text-gray-400 text-lg uppercase tracking-widest">{l}</span>
+              {isNetflix ? (
+                <>
+                  <h3 className="text-white font-light text-5xl mb-12">Who's watching?</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                    {["1 Month", "2 Months", "3 Months", "5 Months"].map((l: string, i: number) => (
+                      <div key={i} className="flex flex-col items-center gap-4">
+                        <div className="w-32 h-32 md:w-44 md:h-44 rounded bg-blue-600 hover:ring-4 ring-white transition-all cursor-pointer"></div>
+                        <span className="text-gray-400 text-lg uppercase tracking-widest">{l}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div className="text-center">
+                    <p className="text-white text-2xl font-display italic">Live Preview Active</p>
+                    <p className="text-gray-500 mt-4 max-w-sm mx-auto">This is a dynamic placeholder for your custom website template.</p>
+                </div>
+              )}
            </div>
         </div>
       </div>
@@ -166,9 +177,11 @@ const PreviewModal = ({ product, onClose }: { product: any, onClose: () => void 
             <div>
               <h4 className="text-white text-xs font-bold uppercase tracking-widest mb-4 opacity-50">What's Inside</h4>
               <ul className="text-[#888] text-sm space-y-3">
-                <li className="flex items-center gap-2"><span className="text-[#FF3B3B]">✦</span> High-fidelity resolution</li>
-                <li className="flex items-center gap-2"><span className="text-[#FF3B3B]">✦</span> Fully editable source files</li>
-                <li className="flex items-center gap-2"><span className="text-[#FF3B3B]">✦</span> Documentation included</li>
+                {(product.whatsInside && product.whatsInside.length > 0 ? product.whatsInside : ['High-fidelity resolution', 'Fully editable source files', 'Documentation included']).map((item: string, i: number) => (
+                  <li key={i} className="flex items-center gap-2">
+                    <span className="text-[#FF3B3B]">✦</span> {item}
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
@@ -181,7 +194,10 @@ const PreviewModal = ({ product, onClose }: { product: any, onClose: () => void 
                </div>
             </div>
             
-            <button className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-[#FF3B3B] hover:text-white transition-all flex items-center justify-center gap-2">
+            <button 
+                onClick={onSave}
+                className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-[#FF3B3B] hover:text-white transition-all flex items-center justify-center gap-2"
+            >
               Save to Library <span>+</span>
             </button>
           </div>
@@ -277,7 +293,39 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showLeadForm, setShowLeadForm] = useState(false);
+  const [submittingLead, setSubmittingLead] = useState(false);
+  const [leadFormData, setLeadFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    occasion: ''
+  });
+
   const observe = useIntersectionObserver();
+
+  const handleLeadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+    setSubmittingLead(true);
+    try {
+      await addDoc(collection(db, 'requests'), {
+        ...leadFormData,
+        productId: selectedProduct.id,
+        productTitle: selectedProduct.title,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      alert(`Success! We've received your information. We will take details from you and provide your template in 6 to 12 hours.`);
+      setShowLeadForm(false);
+      setLeadFormData({ name: '', email: '', phone: '', occasion: '' });
+    } catch (err) {
+      console.error(err);
+      alert('Error submitting request. Please try again.');
+    } finally {
+      setSubmittingLead(false);
+    }
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
@@ -754,7 +802,7 @@ export default function App() {
         <div className="max-w-7xl mx-auto pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-[#444] text-[10px] uppercase font-mono tracking-widest">© 2025 FRAMD. Made with ❤️ for moments that matter.</p>
           <div className="flex gap-8">
-            <a href="/admin" className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors">Admin</a>
+            <Link to="/admin" className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors">Admin</Link>
             {['Privacy', 'Terms', 'Refund Policy'].map(l => (
               <a key={l} href="#" className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors">{l}</a>
             ))}
@@ -764,7 +812,7 @@ export default function App() {
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-[#0A0A0A] z-[200] flex flex-col p-8 md:hidden">
+        <div className="fixed inset-0 bg-[#0A0A0A] z-[200] flex flex-col p-8 md:hidden text-white">
           <div className="flex justify-between items-center mb-16">
             <span className="font-display text-2xl italic font-black text-white">FRAMD<span className="text-[#FF3B3B]">.</span></span>
             <button onClick={() => setMobileMenuOpen(false)} className="text-white"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
@@ -790,7 +838,76 @@ export default function App() {
         </div>
       )}
 
-      {selectedProduct && <PreviewModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />}
+      {selectedProduct && (
+        <PreviewModal 
+            product={selectedProduct} 
+            onClose={() => setSelectedProduct(null)} 
+            onSave={() => setShowLeadForm(true)}
+        />
+      )}
+
+      {/* Lead Form Modal */}
+      {showLeadForm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
+            <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowLeadForm(false)}></div>
+            <div className="relative bg-[#111] border border-white/10 w-full max-w-md rounded-2xl p-8 shadow-2xl animate-[modalEnter_0.3s_ease-out]">
+                <div className="text-center mb-8">
+                    <span className="text-[#FF3B3B] font-mono text-[10px] uppercase tracking-widest block mb-2">Request Access</span>
+                    <h2 className="text-2xl font-bold text-white italic">Artifact: {selectedProduct?.title}</h2>
+                    <p className="text-gray-500 text-xs mt-2 leading-relaxed">Submit your details so we can customize this for you. We'll reach out within 6-12 hours.</p>
+                </div>
+                <form onSubmit={handleLeadSubmit} className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">Full Name</label>
+                        <input 
+                            required
+                            placeholder="John Doe"
+                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors"
+                            value={leadFormData.name}
+                            onChange={e => setLeadFormData({...leadFormData, name: e.target.value})}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">Email Address</label>
+                        <input 
+                            required
+                            type="email"
+                            placeholder="john@example.com"
+                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors"
+                            value={leadFormData.email}
+                            onChange={e => setLeadFormData({...leadFormData, email: e.target.value})}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">WhatsApp Number</label>
+                        <input 
+                            required
+                            placeholder="+91 XXXXX XXXXX"
+                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors"
+                            value={leadFormData.phone}
+                            onChange={e => setLeadFormData({...leadFormData, phone: e.target.value})}
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">Occasion / Details</label>
+                        <textarea 
+                            required
+                            placeholder="Anniversary, Birthday, etc."
+                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors h-24 resize-none"
+                            value={leadFormData.occasion}
+                            onChange={e => setLeadFormData({...leadFormData, occasion: e.target.value})}
+                        />
+                    </div>
+                    <button 
+                        disabled={submittingLead}
+                        className="w-full bg-[#FF3B3B] text-white py-4 rounded-xl font-bold hover:bg-[#FF3B3B]/90 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+                    >
+                        {submittingLead ? 'Submitting...' : 'Submit Request'}
+                    </button>
+                </form>
+            </div>
+        </div>
+      )}
 
       {/* Styles */}
       <style>{`

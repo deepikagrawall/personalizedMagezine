@@ -15,11 +15,29 @@
         "seed": { "type": "number" },
         "isNew": { "type": "boolean" },
         "isBest": { "type": "boolean" },
+        "whatsInside": { "type": "array", "items": { "type": "string" } },
         "pdfUrl": { "type": "string" },
         "imageUrl": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["type", "category", "title", "seed"]
+    },
+    "Request": {
+      "title": "Request",
+      "description": "User lead request for a template",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productTitle": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "occasion": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "contacted", "delivered"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "name", "email"]
     },
     "Category": {
       "title": "Category",
@@ -40,6 +58,10 @@
     "/categories/{categoryId}": {
       "schema": "Category",
       "description": "Collection of product categories"
+    },
+    "/requests/{requestId}": {
+      "schema": "Request",
+      "description": "Collection of user lead requests"
     }
   }
 }
