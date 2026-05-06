@@ -48,6 +48,31 @@
         "name": { "type": "string" }
       },
       "required": ["name"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global application settings including hero and netflix showcase",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string" },
+        "accentColor": { "type": "string" },
+        "heroTagline": { "type": "string" },
+        "heroTitlePart1": { "type": "string" },
+        "heroTitlePart2": { "type": "string" },
+        "heroTitlePart3": { "type": "string" },
+        "heroDescription": { "type": "string" },
+        "heroPrimaryButtonText": { "type": "string" },
+        "heroSecondaryButtonText": { "type": "string" },
+        "heroImages": { "type": "array", "items": { "type": "string" } },
+        "netflixTitle": { "type": "string" },
+        "netflixSubtitle": { "type": "string" },
+        "netflixPrice": { "type": "string" },
+        "netflixOriginalPrice": { "type": "string" },
+        "netflixFeatures": { "type": "array", "items": { "type": "object" } },
+        "netflixScreenshots": { "type": "array", "items": { "type": "object" } },
+        "stats": { "type": "array", "items": { "type": "object" } },
+        "footerTagline": { "type": "string" }
+      }
     }
   },
   "firestore": {
@@ -62,6 +87,10 @@
     "/requests/{requestId}": {
       "schema": "Request",
       "description": "Collection of user lead requests"
+    },
+    "/settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Global application settings"
     }
   }
 }

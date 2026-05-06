@@ -57,6 +57,14 @@ service cloud.firestore {
              data.keys().size() == 1;
     }
 
+    function isValidSiteSettings(data) {
+      return (data.siteName is string || !data.keys().hasAny(['siteName'])) &&
+             (data.accentColor is string || !data.keys().hasAny(['accentColor'])) &&
+             (data.heroTagline is string || !data.keys().hasAny(['heroTagline'])) &&
+             (data.heroTitlePart1 is string || !data.keys().hasAny(['heroTitlePart1'])) &&
+             (data.netflixTitle is string || !data.keys().hasAny(['netflixTitle']));
+    }
+
     // Collection Rules
     match /products/{productId} {
       allow read: if true;
@@ -79,6 +87,11 @@ service cloud.firestore {
       allow create: if isValidRequest(incoming()) && incoming().createdAt == request.time;
       allow update: if isAdmin();
       allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSiteSettings(incoming());
     }
   }
 }

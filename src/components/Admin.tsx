@@ -11,10 +11,30 @@ export const Admin = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'products' | 'requests'>('products');
+  const [activeTab, setActiveTab] = useState<'products' | 'requests' | 'settings'>('products');
   
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [heroForm, setHeroForm] = useState<{
+    tagline: string;
+    titlePart1: string;
+    titlePart2: string;
+    titlePart3: string;
+    description: string;
+    primaryButtonText: string;
+    secondaryButtonText: string;
+    heroImages: string[];
+  }>({
+    tagline: 'Premium Digital Artifacts',
+    titlePart1: 'CRAFTING MOMENTS',
+    titlePart2: 'INTO DIGITAL ART.',
+    titlePart3: 'FOR US.',
+    description: 'Transform your special memories into high-fidelity digital templates. Fully customizable, high-resolution, and delivered instantly.',
+    primaryButtonText: 'Explore Artifacts',
+    secondaryButtonText: 'View Samples',
+    heroImages: []
+  });
+  const [heroFiles, setHeroFiles] = useState<File[]>([]);
   const [form, setForm] = useState({
     title: '',
     desc: '',
@@ -61,10 +81,17 @@ export const Admin = () => {
       setRequests(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     });
 
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'hero'), (docSnap) => {
+      if (docSnap.exists()) {
+        setHeroForm(docSnap.data() as any);
+      }
+    });
+
     return () => {
       unsubProducts();
       unsubCats();
       unsubRequests();
+      unsubSettings();
     };
   }, [user]);
 
@@ -113,6 +140,63 @@ export const Admin = () => {
       alert('Error saving product');
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleSaveHeroSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setUploading(true);
+    try {
+      const { setDoc } = await import('firebase/firestore');
+      
+      let newImageUrls = [...heroForm.heroImages];
+
+      // Upload new files
+      if (heroFiles.length > 0) {
+        for (const file of heroFiles) {
+          const imgRef = ref(storage, `hero/${Date.now()}_${file.name}`);
+          const snapshot = await uploadBytes(imgRef, file);
+          const url = await getDownloadURL(snapshot.ref);
+          newImageUrls.push(url);
+        }
+      }
+
+      const finalSettings = {
+        ...heroForm,
+        heroImages: newImageUrls
+      };
+
+      await setDoc(doc(db, 'settings', 'hero'), finalSettings);
+      setHeroFiles([]);
+      alert('Hero settings synchronized!');
+    } catch (err: any) {
+      console.error(err);
+      alert('Error saving settings: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeHeroImage = (index: number) => {
+    const nextImages = [...heroForm.heroImages];
+    nextImages.splice(index, 1);
+    setHeroForm({ ...heroForm, heroImages: nextImages });
+  };
+
+  const updateRequestStatus = async (id: string, status: string) => {
+    try {
+      await updateDoc(doc(db, 'requests', id), { status });
+    } catch (err) {
+      console.error(err);
+      alert('Error updating status');
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'delivered': return 'text-green-500 bg-green-500/10';
+      case 'contacted': return 'text-blue-500 bg-blue-500/10';
+      default: return 'text-orange-500 bg-orange-500/10';
     }
   };
 
@@ -240,22 +324,45 @@ export const Admin = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
           <div>
-            <h1 className="text-4xl font-display font-bold">Artifact Control Center</h1>
+            <h1 className="text-4xl font-display font-bold italic tracking-tighter">ARTIFACT CONTROL CENTER</h1>
             <div className="flex gap-6 mt-4">
                 <button 
                     onClick={() => setActiveTab('products')}
-                    className={`text-xs uppercase tracking-widest font-mono transition-colors ${activeTab === 'products' ? 'text-[#FF3B3B]' : 'text-gray-500 hover:text-white'}`}
+                    className={`text-[10px] uppercase tracking-[0.2em] font-mono transition-all ${activeTab === 'products' ? 'text-[#FF3B3B] border-b border-[#FF3B3B] pb-1' : 'text-gray-500 hover:text-white'}`}
                 >
-                    Artifacts & Categories
+                    Management
                 </button>
                 <button 
                     onClick={() => setActiveTab('requests')}
-                    className={`text-xs uppercase tracking-widest font-mono transition-colors ${activeTab === 'requests' ? 'text-[#FF3B3B]' : 'text-gray-500 hover:text-white'}`}
+                    className={`text-[10px] uppercase tracking-[0.2em] font-mono transition-all ${activeTab === 'requests' ? 'text-[#FF3B3B] border-b border-[#FF3B3B] pb-1' : 'text-gray-500 hover:text-white'}`}
                 >
-                    User Requests ({requests.length})
+                    Lead Tracker ({requests.length})
+                </button>
+                <button 
+                    onClick={() => setActiveTab('settings')}
+                    className={`text-[10px] uppercase tracking-[0.2em] font-mono transition-all ${activeTab === 'settings' ? 'text-[#FF3B3B] border-b border-[#FF3B3B] pb-1' : 'text-gray-500 hover:text-white'}`}
+                >
+                    Site Configuration
                 </button>
             </div>
           </div>
+          
+          {/* Stats Bar */}
+          <div className="flex bg-[#111] border border-white/5 rounded-2xl p-4 gap-8">
+             <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-gray-600 font-mono">Artifacts</span>
+                <span className="text-xl font-bold font-mono">{products.length}</span>
+             </div>
+             <div className="flex flex-col border-l border-white/5 pl-8">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-gray-600 font-mono">Total Leads</span>
+                <span className="text-xl font-bold font-mono">{requests.length}</span>
+             </div>
+             <div className="flex flex-col border-l border-white/5 pl-8">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-gray-600 font-mono">Categories</span>
+                <span className="text-xl font-bold font-mono">{categories.length}</span>
+             </div>
+          </div>
+
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500">{user.email}</span>
             <button onClick={() => signOut(auth)} className="text-xs uppercase tracking-widest text-[#FF3B3B] hover:underline">Sign Out</button>
@@ -432,7 +539,7 @@ export const Admin = () => {
               </div>
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'requests' ? (
             <div className="space-y-6">
                 <h2 className="text-2xl font-bold">User Lead Requests ({requests.length})</h2>
                 <div className="grid grid-cols-1 gap-4">
@@ -457,18 +564,168 @@ export const Admin = () => {
                                     <p className="text-sm font-bold text-[#FF3B3B]">{r.productTitle}</p>
                                     <p className="text-[10px] text-gray-700 font-mono">ID: {r.productId}</p>
                                 </div>
-                                <div className="flex justify-end gap-3">
-                                    <button 
-                                        onClick={() => handleDelete('requests', r.id)}
-                                        className="text-xs uppercase tracking-widest text-[#FF3B3B] hover:underline"
-                                    >
-                                        Dismiss
-                                    </button>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex justify-end gap-2 mb-2">
+                                        <span className={`px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest ${getStatusColor(r.status)}`}>
+                                            {r.status || 'pending'}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-end gap-3 items-center">
+                                        <select 
+                                            className="bg-black border border-white/10 rounded text-[10px] uppercase font-mono p-1 outline-none"
+                                            value={r.status || 'pending'}
+                                            onChange={(e) => updateRequestStatus(r.id, e.target.value)}
+                                        >
+                                            <option value="pending">Pending</option>
+                                            <option value="contacted">Contacted</option>
+                                            <option value="delivered">Delivered</option>
+                                        </select>
+                                        <button 
+                                            onClick={() => handleDelete('requests', r.id)}
+                                            className="text-white bg-white/5 p-2 rounded hover:bg-red-500/20 transition-colors"
+                                        >
+                                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         ))
                     )}
                 </div>
+            </div>
+        ) : (
+            <div className="max-w-2xl">
+                <h2 className="text-2xl font-bold mb-8 flex items-center gap-2">
+                    <span className="text-[#FF3B3B]">✦</span> Hero Banner Configuration
+                </h2>
+                <form onSubmit={handleSaveHeroSettings} className="space-y-6 bg-[#111] p-8 rounded-2xl border border-white/5">
+                    <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Tagline</label>
+                        <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B]"
+                            value={heroForm.tagline}
+                            onChange={e => setHeroForm({...heroForm, tagline: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Title Part 1</label>
+                            <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.titlePart1}
+                                onChange={e => setHeroForm({...heroForm, titlePart1: e.target.value})}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Title Part 2</label>
+                            <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.titlePart2}
+                                onChange={e => setHeroForm({...heroForm, titlePart2: e.target.value})}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Title Part 3</label>
+                            <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.titlePart3}
+                                onChange={e => setHeroForm({...heroForm, titlePart3: e.target.value})}
+                                required
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Description</label>
+                        <textarea 
+                            className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B] h-32"
+                            value={heroForm.description}
+                            onChange={e => setHeroForm({...heroForm, description: e.target.value})}
+                            required
+                        />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Primary Button</label>
+                            <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.primaryButtonText}
+                                onChange={e => setHeroForm({...heroForm, primaryButtonText: e.target.value})}
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Secondary Button</label>
+                            <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.secondaryButtonText}
+                                onChange={e => setHeroForm({...heroForm, secondaryButtonText: e.target.value})}
+                                required
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4 pt-4 border-t border-white/5">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono mb-2 block">Hero Banner Images (Sync at Home)</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                            {/* Existing Images */}
+                            {heroForm.heroImages.map((url, i) => (
+                                <div key={i} className="relative aspect-[3/4] rounded-lg overflow-hidden border border-white/10 group">
+                                    <img src={url} className="w-full h-full object-cover" alt="" />
+                                    <button 
+                                        type="button"
+                                        onClick={() => removeHeroImage(i)}
+                                        className="absolute top-2 right-2 bg-red-600 p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                            {/* Pending Previews */}
+                            {heroFiles.map((file, i) => (
+                                <div key={`pending-${i}`} className="relative aspect-[3/4] rounded-lg overflow-hidden border-2 border-dashed border-[#FF3B3B]/50 group">
+                                    <img src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-50" alt="" />
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                       <span className="text-[9px] font-mono text-white bg-black/80 px-2 py-1 rounded">PENDING</span>
+                                    </div>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setHeroFiles(prev => prev.filter((_, idx) => idx !== i))}
+                                        className="absolute top-2 right-2 bg-gray-600 p-1.5 rounded-full"
+                                    >
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            ))}
+                            {/* Upload Trigger */}
+                            {heroForm.heroImages.length + heroFiles.length < 5 && (
+                                <label className="aspect-[3/4] rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center cursor-pointer hover:border-[#FF3B3B] transition-colors bg-black/20">
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        className="hidden" 
+                                        multiple 
+                                        onChange={e => e.target.files && setHeroFiles(prev => [...prev, ...Array.from(e.target.files!)])}
+                                    />
+                                    <div className="text-center">
+                                        <div className="text-3xl mb-1 text-gray-700">+</div>
+                                        <div className="text-[8px] uppercase tracking-widest text-gray-600 font-mono">Queue Files</div>
+                                    </div>
+                                </label>
+                            )}
+                        </div>
+                    </div>
+
+                    <button 
+                        disabled={uploading}
+                        className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-[#FF3B3B] hover:text-white transition-all disabled:opacity-50"
+                    >
+                        {uploading ? 'Applying Changes...' : 'Synchronize Banner'}
+                    </button>
+                    <p className="text-center text-[10px] text-gray-600 font-mono uppercase tracking-widest">Changes will reflect instantly across all client terminals.</p>
+                </form>
             </div>
         )}
       </div>

@@ -5,18 +5,220 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { db } from './lib/firebase';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, storage } from './lib/firebase';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // --- DATA ---
 
-const testimonials = [
-  { text: "We used the Netflix anniversary site and our friends literally thought it was real Netflix. Best ₹1,499 ever spent.", author: "Priya & Karan", location: "Mumbai" },
-  { text: "The PDF anniversary card made my girlfriend cry. In a good way. Very good way.", author: "Arjun S.", location: "Delhi" },
-  { text: "Ordered the proposal kit at 2am, had it ready by morning. She said yes.", author: "Rahul M.", location: "Bangalore" },
-  { text: "The attention to detail is insane. Every hover, every animation. Worth every rupee.", author: "Sneha T.", location: "Pune" },
-  { text: "Bought 3 different templates. Each one looked more premium than the last.", author: "Dev & Ananya", location: "Hyderabad" },
-];
+// --- PURCHASE MODAL ---
+const PurchaseModal = ({ product, isOpen, onClose }: { product: any, isOpen: boolean, onClose: () => void }) => {
+  const [step, setStep] = useState<'form' | 'success'>('form');
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    occasion: 'Anniversary',
+    coupleNames: '',
+    message: '',
+    referral: 'Google',
+    format: 'PDF'
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      setStep('form');
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    if (!formData.name) newErrors.name = 'Full name is required';
+    if (!formData.email) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email format';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    
+    try {
+      await addDoc(collection(db, 'requests'), {
+        ...formData,
+        productId: product.id,
+        productTitle: product.title,
+        status: 'pending',
+        createdAt: serverTimestamp()
+      });
+      console.log('Purchase Submitted:', { ...formData, productTitle: product.title });
+      setTimeout(() => {
+        setLoading(false);
+        setStep('success');
+      }, 1500);
+    } catch (err) {
+      console.error(err);
+      alert('Error submitting request');
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/92 backdrop-blur-md animate-[fadeIn_0.3s_ease-out]">
+      <div className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full max-w-[560px] p-8 md:p-12 overflow-y-auto max-h-[95vh] no-scrollbar">
+        <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+
+        {step === 'form' ? (
+          <div>
+            <span className="font-mono text-[11px] text-[var(--accent)] tracking-widest font-bold mb-3 block uppercase">✦ ONE-TIME PURCHASE</span>
+            <h2 className="font-display text-3xl text-white font-bold mb-2">Get {product.title}</h2>
+            <p className="text-gray-500 text-sm mb-8">Fill in your details and we'll deliver your template instantly.</p>
+            
+            <div className="flex items-center gap-4 mb-4">
+               <span className="text-3xl font-bold text-white">{product.price}</span>
+               {product.original && <span className="text-gray-600 line-through text-sm">{product.original}</span>}
+            </div>
+            <div className="space-y-2 mb-8">
+               <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Instant delivery</p>
+               <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Full source code</p>
+               <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Setup guide included</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[13px] text-gray-400">Full Name *</label>
+                  <input 
+                    className={`w-full bg-[#0A0A0A] border ${errors.name ? 'border-[var(--accent)]' : 'border-[#2A2A2A]'} rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all`}
+                    placeholder="Your name"
+                    value={formData.name}
+                    onChange={e => setFormData({...formData, name: e.target.value})}
+                  />
+                  {errors.name && <p className="text-[var(--accent)] text-[10px] uppercase font-bold">{errors.name}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[13px] text-gray-400">Email Address *</label>
+                  <input 
+                    className={`w-full bg-[#0A0A0A] border ${errors.email ? 'border-[var(--accent)]' : 'border-[#2A2A2A]'} rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all`}
+                    placeholder="your@email.com"
+                    type="email"
+                    value={formData.email}
+                    onChange={e => setFormData({...formData, email: e.target.value})}
+                  />
+                  {errors.email && <p className="text-[var(--accent)] text-[10px] uppercase font-bold">{errors.email}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[13px] text-gray-400">Phone Number</label>
+                  <input 
+                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="+91 XXXXX XXXXX"
+                    value={formData.phone}
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[13px] text-gray-400">Occasion Type</label>
+                  <select 
+                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all appearance-none"
+                    value={formData.occasion}
+                    onChange={e => setFormData({...formData, occasion: e.target.value})}
+                  >
+                    {['Anniversary', 'Birthday', 'Proposal', 'Couple', 'Memorial', 'Friendship', 'Other'].map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {product.title.toLowerCase().includes('netflix') || product.category.toLowerCase().includes('anniversary') ? (
+                <div className="space-y-1.5">
+                  <label className="text-[13px] text-gray-400">Couple Names (Optional)</label>
+                  <input 
+                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="e.g. Priya & Karan"
+                    value={formData.coupleNames}
+                    onChange={e => setFormData({...formData, coupleNames: e.target.value})}
+                  />
+                </div>
+              ) : (
+                 <div className="space-y-1.5">
+                    <label className="text-[13px] text-gray-400">Preferred File Format</label>
+                    <select 
+                        className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all appearance-none"
+                        value={formData.format}
+                        onChange={e => setFormData({...formData, format: e.target.value})}
+                    >
+                        <option value="PDF">PDF</option>
+                        <option value="PNG">PNG</option>
+                        <option value="Both">Both</option>
+                    </select>
+                </div>
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-[13px] text-gray-400">Special Message (Optional)</label>
+                <textarea 
+                  className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all h-24 resize-none"
+                  placeholder="Any customization notes or special requests..."
+                  value={formData.message}
+                  onChange={e => setFormData({...formData, message: e.target.value})}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[13px] text-gray-400">How did you hear about us?</label>
+                <select 
+                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all appearance-none"
+                    value={formData.referral}
+                    onChange={e => setFormData({...formData, referral: e.target.value})}
+                >
+                    {['Instagram', "Friend's Recommendation", 'Google', 'Other'].map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                </select>
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full bg-[var(--accent)] text-white py-4 rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center"
+              >
+                {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Complete Purchase →"}
+              </button>
+            </form>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="w-20 h-20 bg-[var(--accent)] rounded-full flex items-center justify-center mx-auto mb-8 animate-[scaleIn_0.5s_ease-out]">
+               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+            </div>
+            <h2 className="font-display text-3xl text-white font-bold mb-4">Order Received!</h2>
+            <p className="text-gray-400 mb-2">Check your email at <span className="text-white font-bold">{formData.email}</span> for download link and setup guide.</p>
+            <p className="text-gray-600 text-xs mb-10">We typically respond within 2 hours.</p>
+            <button onClick={onClose} className="text-gray-400 hover:text-white font-bold">← Browse More Templates</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // --- HOOKS ---
 
@@ -42,7 +244,443 @@ function useIntersectionObserver() {
 
 // --- COMPONENTS ---
 
-const PreviewModal = ({ product, onClose, onSave }: { product: any, onClose: () => void, onSave: () => void }) => {
+// --- ADMIN SIDE PANEL ---
+const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, onClose: () => void, data: any, onUpdate: (newData: any) => void }) => {
+  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads'>('netflix');
+  const [localData, setLocalData] = useState(data);
+  const [isSaving, setIsSaving] = useState(false);
+  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [leads, setLeads] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
+
+  useEffect(() => {
+    if (activeTab === 'leads') {
+        const q = query(collection(db, 'requests'), orderBy('createdAt', 'desc'));
+        const unsub = onSnapshot(q, (snapshot) => {
+            setLeads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        });
+        return unsub;
+    }
+  }, [activeTab]);
+
+  const handleDeleteLead = async (id: string) => {
+    if (window.confirm('Delete this request?')) {
+        try {
+            await deleteDoc(doc(db, 'requests', id));
+        } catch (err) {
+            console.error(err);
+            alert('Delete failed');
+        }
+    }
+  };
+
+  const handleUpdateLeadStatus = async (id: string, status: string) => {
+    try {
+        await updateDoc(doc(db, 'requests', id), { status });
+    } catch (err) {
+        console.error(err);
+    }
+  };
+
+  const handleImageUpload = async (file: File, index: number) => {
+    setUploadingIdx(index);
+    const screenshotId = localData.netflixShowcase.screenshots[index].id;
+    console.log(`Uploading image for slot: ${screenshotId}`);
+    
+    try {
+      const storageRef = ref(storage, `showcase/netflix/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      const newSS = [...localData.netflixShowcase.screenshots];
+      newSS[index] = { ...newSS[index], url: downloadURL };
+      setLocalData({
+        ...localData, 
+        netflixShowcase: {
+          ...localData.netflixShowcase, 
+          screenshots: newSS
+        }
+      });
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('Upload failed. Try again.');
+    } finally {
+      setUploadingIdx(null);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, 'settings', 'hero'), { ...localData, updatedAt: serverTimestamp() });
+      alert('Success! Site content synchronized across all users.');
+      onClose();
+    } catch (err) {
+      console.error(err);
+      alert('Sync Failed. Check permissions or network.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex justify-end">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="relative w-full max-w-[480px] bg-[#0A0A0A] h-full border-l border-white/10 animate-[slideIn_0.3s_ease-out] flex flex-col">
+        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-xl font-bold text-white">Artifact Control</h2>
+            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mt-1">Live CMS v1.4</p>
+          </div>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+
+        <div className="flex border-b border-white/10 overflow-x-auto no-scrollbar bg-black/40">
+          {[
+            { id: 'netflix', label: 'Netflix Block' },
+            { id: 'settings', label: 'Hero & Identity' },
+            { id: 'products', label: 'Artifacts' },
+            { id: 'leads', label: 'User Leads' }
+          ].map(tab => (
+            <button 
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`px-6 py-4 text-[10px] font-mono tracking-widest uppercase transition-all flex-shrink-0 border-b-2 ${
+                activeTab === tab.id ? 'border-[var(--accent)] text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6 space-y-10 no-scrollbar pb-32">
+          {activeTab === 'netflix' && (
+            <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
+              <div className="space-y-4">
+                <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Main Banner</h3>
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Main Heading</label>
+                        <input 
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)] transition-all"
+                            value={localData.netflixShowcase.title}
+                            onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, title: e.target.value}})}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Description Content</label>
+                        <textarea 
+                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)] h-28 resize-none"
+                            value={localData.netflixShowcase.subtitle}
+                            onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, subtitle: e.target.value}})}
+                        />
+                    </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Promo Price</label>
+                    <input 
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                      value={localData.netflixShowcase.price}
+                      onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, price: e.target.value}})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Strike Price</label>
+                    <input 
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                      value={localData.netflixShowcase.originalPrice}
+                      onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, originalPrice: e.target.value}})}
+                    />
+                  </div>
+              </div>
+
+              <div className="space-y-4">
+                  <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Key Features</h3>
+                  <div className="space-y-4">
+                    {localData.netflixShowcase.features.map((feat: any, idx: number) => (
+                        <div key={idx} className="p-4 bg-white/5 rounded-xl border border-white/5 flex gap-4">
+                            <input 
+                                className="w-10 bg-black border border-white/10 rounded text-center text-xl shrink-0"
+                                value={feat.emoji}
+                                onChange={e => {
+                                    const newF = [...localData.netflixShowcase.features];
+                                    newF[idx].emoji = e.target.value;
+                                    setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, features: newF}});
+                                }}
+                            />
+                            <div className="flex-1 space-y-2">
+                                <input 
+                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-xs font-bold"
+                                    placeholder="Title"
+                                    value={feat.title}
+                                    onChange={e => {
+                                        const newF = [...localData.netflixShowcase.features];
+                                        newF[idx].title = e.target.value;
+                                        setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, features: newF}});
+                                    }}
+                                />
+                                <input 
+                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-[11px] opacity-60"
+                                    placeholder="Description"
+                                    value={feat.desc}
+                                    onChange={e => {
+                                        const newF = [...localData.netflixShowcase.features];
+                                        newF[idx].desc = e.target.value;
+                                        setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, features: newF}});
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                  </div>
+              </div>
+              
+              <div className="space-y-4">
+                  <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Visual Gallery</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                      {localData.netflixShowcase.screenshots.map((ss: any, idx: number) => (
+                        <div key={ss.id} className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-3 group/ss">
+                           <div className="flex justify-between items-center mb-1">
+                              <span className="text-[9px] font-mono text-white/40 uppercase">Grid Slot: {ss.size}</span>
+                              <div className="w-10 h-10 rounded-lg shrink-0 bg-cover bg-center border border-white/20 shadow-lg" style={{ backgroundImage: `url(${ss.url})` }} />
+                           </div>
+                           
+                           <div className="space-y-2">
+                                <label className="text-[9px] text-gray-500 uppercase tracking-widest font-mono block">Image Artifact</label>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <input 
+                                            type="file"
+                                            accept="image/*"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) handleImageUpload(file, idx);
+                                            }}
+                                        />
+                                        <div className={`w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-white text-[11px] flex items-center gap-2 transition-colors ${uploadingIdx === idx ? 'opacity-50' : 'hover:border-[var(--accent)]'}`}>
+                                            {uploadingIdx === idx ? (
+                                                <div className="w-3 h-3 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin shrink-0" />
+                                            ) : (
+                                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                            )}
+                                            <span className="truncate">{uploadingIdx === idx ? 'Uploading Artifact...' : (ss.url ? 'Change Artifact' : 'Upload Artifact')}</span>
+                                        </div>
+                                    </div>
+                                    {ss.url && (
+                                        <button 
+                                            onClick={() => window.open(ss.url, '_blank')}
+                                            className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-gray-500 hover:text-white"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        </button>
+                                    )}
+                                </div>
+                           </div>
+
+                           <div className="space-y-2">
+                                <label className="text-[9px] text-gray-500 uppercase tracking-widest font-mono block">Hover Caption</label>
+                                <input 
+                                    className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-white text-[11px] outline-none focus:border-[var(--accent)] transition-all"
+                                    value={ss.label}
+                                    onChange={e => {
+                                        const newSS = [...localData.netflixShowcase.screenshots];
+                                        newSS[idx].label = e.target.value;
+                                        setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, screenshots: newSS}});
+                                    }}
+                                />
+                           </div>
+                        </div>
+                      ))}
+                  </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'settings' && (
+             <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
+                 <div className="space-y-4">
+                    <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Brand & Theme</h3>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Site Name</label>
+                            <input 
+                                className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
+                                value={localData.siteName}
+                                onChange={e => setLocalData({...localData, siteName: e.target.value})}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Interface Accent Color</label>
+                            <div className="flex gap-3 items-center">
+                                <div className="w-12 h-12 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: localData.accentColor }} />
+                                <input 
+                                    className="flex-1 bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-xs font-mono outline-none"
+                                    value={localData.accentColor}
+                                    onChange={e => setLocalData({...localData, accentColor: e.target.value.toUpperCase()})}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-4">
+                    <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Hero Copy</h3>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Floating Tagline</label>
+                            <input 
+                                className="w-full bg-white/5 border border-white/10 rounded px-4 py-2 text-white text-xs"
+                                value={localData.heroTagline}
+                                onChange={e => setLocalData({...localData, heroTagline: e.target.value})}
+                            />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                            {['Part 1', 'Part 2', 'Part 3'].map((p, i) => (
+                                <input 
+                                    key={i}
+                                    className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-[11px] outline-none"
+                                    value={(localData as any)[`heroTitlePart${i+1}`]}
+                                    onChange={e => setLocalData({...localData, [`heroTitlePart${i+1}`]: e.target.value})}
+                                />
+                            ))}
+                        </div>
+                        <textarea 
+                            className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-xs h-24 resize-none"
+                            value={localData.heroDescription}
+                            onChange={e => setLocalData({...localData, heroDescription: e.target.value})}
+                        />
+                    </div>
+                 </div>
+
+                 <div className="space-y-4">
+                    <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Platform Metrics</h3>
+                    <div className="space-y-3">
+                        {localData.stats.map((stat: any, i: number) => (
+                            <div key={i} className="flex gap-2">
+                                <input 
+                                    className="w-1/3 bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-[11px] font-bold"
+                                    value={stat.number}
+                                    onChange={e => {
+                                        const newS = [...localData.stats];
+                                        newS[i].number = e.target.value;
+                                        setLocalData({...localData, stats: newS});
+                                    }}
+                                />
+                                <input 
+                                    className="w-2/3 bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-[11px]"
+                                    value={stat.label}
+                                    onChange={e => {
+                                        const newS = [...localData.stats];
+                                        newS[i].label = e.target.value;
+                                        setLocalData({...localData, stats: newS});
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                 </div>
+             </div>
+          )}
+
+          {activeTab === 'leads' && (
+            <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Incoming Requests</h3>
+                <div className="space-y-4">
+                    {leads.length === 0 ? (
+                        <div className="p-12 text-center text-gray-600 text-xs font-mono uppercase tracking-widest border border-dashed border-white/10 rounded-2xl">
+                            Queue is empty
+                        </div>
+                    ) : (
+                        leads.map(lead => (
+                            <div key={lead.id} className="p-5 bg-white/5 border border-white/10 rounded-2xl space-y-4">
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <h4 className="text-white font-bold text-sm">{lead.name}</h4>
+                                        <p className="text-[10px] text-gray-500 font-mono mt-0.5">{lead.email}</p>
+                                        <p className="text-[10px] text-gray-500 font-mono">{lead.phone}</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => handleDeleteLead(lead.id)}
+                                        className="p-2 text-gray-600 hover:text-red-500 transition-colors"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
+                                    <div className="space-y-1">
+                                        <span className="text-[9px] text-gray-600 uppercase font-mono">Occasion</span>
+                                        <p className="text-[11px] text-gray-300">{lead.occasion}</p>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <span className="text-[9px] text-gray-600 uppercase font-mono">Artifact</span>
+                                        <p className="text-[11px] text-[var(--accent)] font-bold">{lead.productTitle}</p>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-[9px] text-gray-600 font-mono uppercase">{new Date(lead.createdAt?.toDate()).toLocaleDateString()}</span>
+                                    <select 
+                                        className="bg-black border border-white/10 rounded-lg text-[9px] uppercase font-mono px-2 py-1 outline-none text-gray-400 focus:text-white"
+                                        value={lead.status || 'pending'}
+                                        onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
+                                    >
+                                        <option value="pending">Pending</option>
+                                        <option value="contacted">Contacted</option>
+                                        <option value="delivered">Delivered</option>
+                                    </select>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-6 border-t border-white/10 bg-[#0A0A0A] flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+           <div className="flex flex-col">
+              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Status</span>
+              <span className="text-[9px] font-mono text-green-500 uppercase tracking-widest font-bold">Online & Validated</span>
+           </div>
+           <div className="flex gap-3">
+              <button disabled={isSaving} onClick={onClose} className="px-6 py-2.5 text-xs font-mono tracking-widest uppercase text-gray-400 hover:text-white transition-colors">Abort</button>
+              <button 
+                onClick={handleSave}
+                disabled={isSaving}
+                className="bg-[var(--accent)] text-white px-8 py-3 rounded-xl text-xs font-mono tracking-[0.2em] uppercase font-black hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
+              >
+                {isSaving ? <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : "Deploy Changes"}
+              </button>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => void }> = ({ product, onClose, onSave }) => {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const isNetflix = product.type === 'site' && product.title.toLowerCase().includes('netflix');
 
@@ -54,7 +692,7 @@ const PreviewModal = ({ product, onClose, onSave }: { product: any, onClose: () 
     document.body.style.overflow = 'hidden';
     return () => {
       window.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = '';
     };
   }, [onClose]);
 
@@ -120,12 +758,23 @@ const PreviewModal = ({ product, onClose, onSave }: { product: any, onClose: () 
         <div className="flex-1 overflow-y-auto no-scrollbar bg-[#0A0A0A] p-4 md:p-12">
           <div className="max-w-3xl mx-auto space-y-12">
             {product.type === 'pdf' && product.pdfUrl ? (
-              <div className="w-full min-h-[600px] bg-white rounded-lg overflow-hidden shadow-2xl">
+              <div className="w-full min-h-[500px] md:min-h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative">
+                {/* Fallback for mobile since standard iFrame PDF view often fails */}
                 <iframe 
-                  src={`${product.pdfUrl}#toolbar=0`} 
-                  className="w-full h-[600px] md:h-[800px]"
+                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(product.pdfUrl)}&embedded=true`}
+                  className="w-full h-[500px] md:h-[800px]"
                   title="PDF Preview"
                 />
+                <div className="md:hidden p-4 bg-black/5 flex justify-center">
+                    <a 
+                        href={product.pdfUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs font-mono uppercase tracking-widest text-[#FF3B3B] font-bold underline"
+                    >
+                        Open Full PDF In New Tab
+                    </a>
+                </div>
               </div>
             ) : product.imageUrl ? (
               <img 
@@ -187,18 +836,20 @@ const PreviewModal = ({ product, onClose, onSave }: { product: any, onClose: () 
           </div>
 
           <div className="mt-auto pt-8 border-t border-white/5 space-y-4">
-            <div className="flex items-center justify-between mb-4">
-               <div className="flex items-center gap-3">
-                   <span className="text-white font-mono font-bold text-4xl">{product.price}</span>
-                   <div className="bg-white/5 px-2 py-1 rounded text-[10px] text-gray-500 uppercase tracking-widest">PRO Artifact</div>
-               </div>
-            </div>
+            {!isNetflix && (
+                <div className="flex items-center justify-between mb-4">
+                   <div className="flex items-center gap-3">
+                       <span className="text-white font-mono font-bold text-4xl">{product.price}</span>
+                       <div className="bg-white/5 px-2 py-1 rounded text-[10px] text-gray-500 uppercase tracking-widest">PRO Artifact</div>
+                   </div>
+                </div>
+            )}
             
             <button 
                 onClick={onSave}
                 className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-[#FF3B3B] hover:text-white transition-all flex items-center justify-center gap-2"
             >
-              Save to Library <span>+</span>
+              {isNetflix ? 'Get Access' : 'Save to Library'} <span>+</span>
             </button>
           </div>
         </div>
@@ -269,8 +920,17 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
         
         <div className="mt-auto flex items-center justify-between pt-6 border-t border-white/5">
           <div className="flex flex-col">
-            <span className="text-[#444] text-[10px] font-mono uppercase tracking-widest line-through mb-1">{product.original}</span>
-            <span className="text-white font-mono font-bold text-2xl">{product.price}</span>
+            {!(product.type === 'site' && product.title.toLowerCase().includes('netflix')) ? (
+                <>
+                    <span className="text-[#444] text-[10px] font-mono uppercase tracking-widest line-through mb-1">{product.original || '₹999'}</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-white font-mono font-black text-2xl tracking-tighter">FREE</span>
+                        <span className="text-[var(--accent)] text-[8px] font-bold uppercase tracking-widest">BETA</span>
+                    </div>
+                </>
+            ) : (
+                <span className="text-[var(--accent)] text-[10px] font-mono uppercase tracking-[0.2em] font-bold">Limited Beta Access</span>
+            )}
           </div>
           <button 
             onClick={() => onPreview(product)}
@@ -292,40 +952,89 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
+  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [purchaseModalProduct, setPurchaseModalProduct] = useState<any>(null);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showLeadForm, setShowLeadForm] = useState(false);
-  const [submittingLead, setSubmittingLead] = useState(false);
-  const [leadFormData, setLeadFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    occasion: ''
+
+  const testimonials = [
+    { text: "recreated everything. even the trailers. worth every penny.", author: "Aryan Sharma", location: "Bangalore" },
+    { text: "the pdf layouts are gorgeous. printing it for our desk.", author: "Simron Das", location: "Mumbai" },
+    { text: "best thing i found for our anniversary. she was in tears.", author: "Kabir Mehta", location: "Delhi" },
+    { text: "High quality artifacts. very premium feel.", author: "Rahul V.", location: "Pune" }
+  ];
+
+  const [adminData, setAdminData] = useState<{
+    siteName: string;
+    accentColor: string;
+    heroTagline: string;
+    heroTitlePart1: string;
+    heroTitlePart2: string;
+    heroTitlePart3: string;
+    heroDescription: string;
+    heroPrimaryButtonText: string;
+    heroSecondaryButtonText: string;
+    heroImages: string[];
+    netflixShowcase: {
+      title: string;
+      subtitle: string;
+      price: string;
+      originalPrice: string;
+      features: { emoji: string; title: string; desc: string }[];
+      screenshots: { id: number; url: string; label: string; size: 'hero' | 'portrait' | 'square' | 'wide' }[];
+    };
+    stats: { number: string; label: string }[];
+    footerTagline: string;
+  }>({
+    siteName: 'FRAMD',
+    accentColor: '#FF3B3B',
+    heroTagline: 'Now in Beta: Access Everything for Free',
+    heroTitlePart1: 'Digital',
+    heroTitlePart2: 'Artifacts',
+    heroTitlePart3: 'For Us.',
+    heroDescription: 'Curated PDF templates and cinematic anniversary websites. Made for moments that refuse to be forgotten.',
+    heroPrimaryButtonText: 'Explore The Collection',
+    heroSecondaryButtonText: 'Netflix Sites',
+    heroImages: [],
+    netflixShowcase: {
+      title: 'The Netflix Anniversary Experience',
+      subtitle: 'The most immersive anniversary website template ever built. Profiles, banners, scroll rows — identical to Netflix.',
+      price: 'FREE',
+      originalPrice: '₹1,499',
+      features: [
+        { emoji: '🎬', title: 'Netflix Profile Screen', desc: '4 milestone profiles. Who\'s watching your love story?' },
+        { emoji: '🎞️', title: 'Cinematic Hero Banner', desc: 'Full-screen video play, Ken Burns animation, dual gradients' },
+        { emoji: '📼', title: 'Scroll Rows', desc: 'Horizontal scroll cards with hover popups, exactly like Netflix' },
+        { emoji: '🔍', title: 'Working Search', desc: 'Live search across all your memories and moments' },
+        { emoji: '📱', title: '5 Full Pages', desc: 'Home, Our Story, Moments, Gallery, More Info — all working' },
+        { emoji: '⚡', title: 'One File', desc: 'Single HTML/JSX file. Deploy anywhere in minutes.' },
+      ],
+      screenshots: [
+        { id: 1, url: 'https://picsum.photos/800/450?random=301', label: 'Browse Page', size: 'hero' },
+        { id: 2, url: 'https://picsum.photos/400/711?random=302', label: 'Profile Screen', size: 'portrait' },
+        { id: 3, url: 'https://picsum.photos/400/711?random=303', label: 'Content Rows', size: 'portrait' },
+        { id: 4, url: 'https://picsum.photos/400/400?random=304', label: 'Card Hover', size: 'square' },
+        { id: 5, url: 'https://picsum.photos/800/450?random=305', label: 'Our Story Page', size: 'wide' },
+      ]
+    },
+    stats: [
+      { number: '2,400+', label: 'Templates' },
+      { number: '180+', label: 'Websites Built' },
+      { number: '4.9★', label: 'Rating' }
+    ],
+    footerTagline: 'Templates for moments that matter.'
   });
 
   const observe = useIntersectionObserver();
-
-  const handleLeadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedProduct) return;
-    setSubmittingLead(true);
-    try {
-      await addDoc(collection(db, 'requests'), {
-        ...leadFormData,
-        productId: selectedProduct.id,
-        productTitle: selectedProduct.title,
-        status: 'pending',
-        createdAt: serverTimestamp()
-      });
-      alert(`Success! We've received your information. We will take details from you and provide your template in 6 to 12 hours.`);
-      setShowLeadForm(false);
-      setLeadFormData({ name: '', email: '', phone: '', occasion: '' });
-    } catch (err) {
-      console.error(err);
-      alert('Error submitting request. Please try again.');
-    } finally {
-      setSubmittingLead(false);
-    }
-  };
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'));
@@ -338,9 +1047,39 @@ export default function App() {
       setCategoriesFromDB(snapshot.docs.map(doc => doc.data().name));
     });
 
+    const unsubSettings = onSnapshot(doc(db, 'settings', 'hero'), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setAdminData(prev => ({
+          ...prev,
+          siteName: data.siteName || prev.siteName,
+          accentColor: data.accentColor || prev.accentColor,
+          heroTagline: data.heroTagline || data.tagline || prev.heroTagline,
+          heroTitlePart1: data.heroTitlePart1 || data.titlePart1 || prev.heroTitlePart1,
+          heroTitlePart2: data.heroTitlePart2 || data.titlePart2 || prev.heroTitlePart2,
+          heroTitlePart3: data.heroTitlePart3 || data.titlePart3 || prev.heroTitlePart3,
+          heroDescription: data.heroDescription || data.description || prev.heroDescription,
+          heroPrimaryButtonText: data.heroPrimaryButtonText || data.primaryButtonText || prev.heroPrimaryButtonText,
+          heroSecondaryButtonText: data.heroSecondaryButtonText || data.secondaryButtonText || prev.heroSecondaryButtonText,
+          heroImages: data.heroImages || prev.heroImages,
+          netflixShowcase: data.netflixShowcase ? {
+            ...prev.netflixShowcase,
+            ...data.netflixShowcase
+          } : prev.netflixShowcase,
+          stats: data.stats || prev.stats,
+          footerTagline: data.footerTagline || prev.footerTagline
+        }));
+
+        if (data.accentColor) {
+           document.documentElement.style.setProperty('--accent', data.accentColor);
+        }
+      }
+    });
+
     return () => {
       unsubProducts();
       unsubCats();
+      unsubSettings();
     };
   }, []);
 
@@ -366,7 +1105,7 @@ export default function App() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-6">
-          <div className="w-16 h-16 border-4 border-[#FF3B3B] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-16 h-16 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
           <p className="text-white font-mono text-xs tracking-widest uppercase">Loading Artifacts...</p>
         </div>
       </div>
@@ -374,7 +1113,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-black overflow-x-hidden selection:bg-[var(--accent)] selection:text-white">
       {/* Navbar */}
       <nav className={`fixed top-0 w-full h-16 flex items-center justify-between px-6 md:px-12 z-[100] transition-all duration-300 ${
         scrolled ? 'bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-white/10' : 'bg-transparent'
@@ -419,58 +1158,68 @@ export default function App() {
       {/* Hero */}
       <section ref={observe} className="min-h-screen flex flex-col items-center justify-center pt-24 px-6 md:px-12 pb-16 relative overflow-hidden grain section-dark">
         {/* Animated Background Elements */}
-        <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-[#FF3B3B]/10 blur-[180px] rounded-full pointer-events-none -z-10 animate-[pulse_10s_infinite_alternate]"></div>
+        <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-[var(--accent)]/10 blur-[180px] rounded-full pointer-events-none -z-10 animate-[pulse_10s_infinite_alternate]"></div>
         <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#FFD60A]/5 blur-[150px] rounded-full pointer-events-none -z-10 animate-[pulse_8s_infinite_alternate-reverse]"></div>
         
         <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-24 relative z-20">
           <div className="w-full md:w-1/2 flex flex-col items-start text-balance">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full mb-8 animate-[fadeIn_0.8s_ease-out]">
-              <span className="w-2 h-2 bg-[#FF3B3B] rounded-full animate-ping"></span>
-              <span className="text-[10px] font-mono font-bold tracking-[0.3em] text-[#888] uppercase">Now in Beta: Access Everything for Free</span>
+              <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-ping"></span>
+              <span className="text-[10px] font-mono font-bold tracking-[0.3em] text-[#888] uppercase">{adminData.heroTagline}</span>
             </div>
             
             <h1 className="flex flex-col text-white mb-8 overflow-hidden">
-              <span className="font-display text-7xl md:text-[110px] italic leading-[0.85] animate-[slideUp_1s_ease-out_forwards]">Digital</span>
-              <span className="font-display text-7xl md:text-[110px] font-black leading-[0.85] animate-[slideUp_1s_ease-out_0.2s_forwards] translate-y-full opacity-0">Artifacts</span>
-              <span className="font-display text-7xl md:text-[110px] italic text-[#FF3B3B] leading-[0.85] animate-[slideUp_1s_ease-out_0.4s_forwards] translate-y-full opacity-0">For Us.</span>
+              <span className="font-display text-7xl md:text-[110px] italic leading-[0.85] animate-[slideUp_1s_ease-out_forwards]">{adminData.heroTitlePart1}</span>
+              <span className="font-display text-7xl md:text-[110px] font-black leading-[0.85] animate-[slideUp_1s_ease-out_0.2s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart2}</span>
+              <span className="font-display text-7xl md:text-[110px] italic text-[var(--accent)] leading-[0.85] animate-[slideUp_1s_ease-out_0.4s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart3}</span>
             </h1>
 
-            <p className="text-[#888] text-xl md:text-2xl max-w-md mb-12 font-light leading-relaxed animate-[fadeIn_1.5s_ease-out_0.6s_forwards] opacity-0">
-              Curated PDF templates and cinematic anniversary websites. Made for moments that refuse to be forgotten.
+            <p className="text-[#888] text-xl md:text-2xl max-w-xl mb-12 font-light leading-relaxed animate-[fadeIn_1.5s_ease-out_0.6s_forwards] opacity-0">
+              {adminData.heroDescription}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-5 w-full sm:w-auto animate-[fadeIn_1.5s_ease-out_0.8s_forwards] opacity-0">
-              <a href="#templates" className="bg-white text-black px-12 py-5 rounded-full text-lg font-bold hover:bg-[#FF3B3B] hover:text-white transition-all text-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:scale-105 active:scale-95">
-                Explore The Collection
+              <a href="#templates" className="bg-white text-black px-12 py-5 rounded-full text-lg font-bold hover:bg-[var(--accent)] hover:text-white transition-all text-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:scale-105 active:scale-95">
+                {adminData.heroPrimaryButtonText}
               </a>
               <a href="#netflix-sites" className="border border-white/20 hover:border-white px-12 py-5 rounded-full text-lg font-bold transition-all text-center backdrop-blur-sm hover:bg-white/5 active:scale-95">
-                Netflix Sites
+                {adminData.heroSecondaryButtonText}
               </a>
             </div>
           </div>
 
-          <div className="w-full md:w-1/2 relative h-[500px] md:h-[600px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
+          <div className="w-full md:w-1/2 relative h-[500px] md:h-[650px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
             <div className="absolute inset-0 flex items-center justify-center">
-              {[0, 1, 2].map((i) => (
-                <div 
-                  key={i}
-                  className="absolute w-[320px] h-[450px] rounded-3xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_60px_120px_rgba(0,0,0,0.9)] animate-float"
-                  style={{ 
-                    '--rot': `${-12 + (i * 12)}deg`,
-                    animationDelay: `${i * 1.2}s`,
-                    zIndex: i,
-                    transform: `translateX(${(i - 1) * 80}px) rotateY(${-20 + (i * 20)}deg) translateY(${(i - 1) * 30}px) rotateZ(${-5 + (i * 5)}deg)`,
-                    opacity: i === 1 ? 1 : 0.4
-                  }}
-                >
-                  <img src={`https://picsum.photos/800/1100?random=${50+i}`} className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-700" alt="Artifact" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                  <div className="absolute bottom-6 left-6">
-                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-1 block">Series 0{i + 1}</span>
-                    <span className="text-white font-display text-xl">Artifact_{i + 10}</span>
+              {(adminData.heroImages.length > 0 ? adminData.heroImages : [null, null, null]).slice(0, 5).map((url, i, arr) => {
+                const total = arr.length;
+                const offset = total > 1 ? (i - (total-1)/2) : 0;
+                const featured = products.filter(p => p.isBest || p.isNew)[i] || products[i];
+                return (
+                  <div 
+                    key={i}
+                    className="absolute w-[280px] h-[400px] md:w-[320px] md:h-[450px] rounded-3xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_60px_120px_rgba(0,0,0,0.9)] animate-float"
+                    style={{ 
+                      '--rot': `${-12 + (i * 8)}deg`,
+                      animationDelay: `${i * 1.5}s`,
+                      zIndex: i,
+                      transform: `translateX(${offset * (total > 3 ? 60 : 100)}px) rotateY(${-20 + (i * 10)}deg) translateY(${Math.abs(offset) * 20}px) rotateZ(${offset * 5}deg)`,
+                      opacity: i === Math.floor(total/2) ? 1 : 0.6
+                    }}
+                    onClick={() => featured && setSelectedProduct(featured)}
+                  >
+                    <img 
+                        src={url || featured?.imageUrl || `https://picsum.photos/800/1100?random=${50+i}`} 
+                        className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-700 cursor-pointer" 
+                        alt="Artifact" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                    <div className="absolute bottom-6 left-6">
+                      <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-1 block">{featured?.category || `Series 0${i+1}`}</span>
+                      <span className="text-white font-display text-xl">{featured?.title || `Artifact_0${i+1}`}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>
@@ -542,95 +1291,147 @@ export default function App() {
         </div>
       </section>
 
-      {/* Showcase - Dark */}
+      {/* Netflix Experience Showcase */}
       <section id="netflix-sites" ref={observe} className="py-40 px-6 md:px-12 section-dark grain relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_0%,rgba(255,59,59,0.1),transparent)] pointer-events-none"></div>
-        <div className="text-center mb-24 max-w-4xl mx-auto">
-          <span className="font-mono text-[11px] font-medium text-[#FF3B3B] tracking-[0.15em] mb-4 inline-block">✦ FEATURED TEMPLATE</span>
-          <h2 className="font-display text-5xl md:text-7xl font-bold mb-6">The Netflix Anniversary Experience</h2>
-          <p className="text-[#888] text-lg leading-relaxed">
-            The most immersive anniversary website template ever built. Profiles, banners, scroll rows — identical to Netflix.
-          </p>
-        </div>
-
-        {/* Browser Mockup */}
-        <div className="relative max-w-[900px] mx-auto mb-32 z-10 group">
-          <div className="absolute inset-0 bg-[#FF3B3B]/10 blur-[120px] rounded-full pointer-events-none -z-10 group-hover:bg-[#FF3B3B]/20 transition-all duration-700"></div>
-          
-          <div className="bg-[#1A1A1A] border border-[#2A2A2A] rounded-xl overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.8)]">
-            {/* Browser Header */}
-            <div className="h-10 bg-[#111] flex items-center px-4 gap-2 border-b border-[#2A2A2A]">
-              <div className="flex gap-1.5 leading-none">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#FF3B3B]"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
-              </div>
-              <div className="flex-1 mx-8 bg-[#0A0A0A] h-6 rounded flex items-center px-3">
-                <span className="text-[10px] text-gray-600 font-mono">framd.in/anniversary-preview</span>
-              </div>
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_100%_0%,rgba(var(--accent-rgb),0.1),transparent)] pointer-events-none"></div>
+        
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-20 items-center">
+          <div className="w-full lg:w-5/12">
+            <div className="inline-block px-3 py-1 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full mb-6">
+              <span className="text-[var(--accent)] text-[10px] font-mono font-bold tracking-widest uppercase">✦ Featured Artifact</span>
             </div>
-
-            {/* Inner Content - Live Mini Netflix Replica */}
-            <div className="bg-black aspect-video flex flex-col items-center justify-center p-6 relative">
-              <span className="absolute top-6 left-6 font-black text-[#E50914] text-xl tracking-tighter italic">NETFLIX</span>
-              
-              <h3 className="text-white font-light text-2xl md:text-4xl mb-12">Who's watching?</h3>
-              
-              <div className="grid grid-cols-4 gap-4 md:gap-8 max-w-[600px]">
-                {[ 
-                  { l: "1 Month", c: "#2563EB", i: "🌸" },
-                  { l: "2 Months", c: "#7C3AED", i: "🌙" },
-                  { l: "3 Months", c: "#059669", i: "💫" },
-                  { l: "5 Months", c: "#DC2626", i: "🔥" }
-                ].map((p, idx) => (
-                  <div key={idx} className="flex flex-col items-center gap-3 group/profile">
-                    <div 
-                      className="w-12 h-12 md:w-24 md:h-24 rounded border-2 border-transparent group-hover/profile:border-white transition-all overflow-hidden flex items-center justify-center text-2xl md:text-4xl"
-                      style={{ backgroundColor: p.c }}
-                    >
-                      {p.i}
-                    </div>
-                    <span className="text-[10px] md:text-xs text-gray-500 group-hover:text-white">{p.l}</span>
+            <h2 className="font-display text-5xl md:text-7xl text-white font-bold mb-8 leading-tight">
+              {adminData.netflixShowcase.title}
+            </h2>
+            <p className="text-gray-400 text-xl mb-12 font-light leading-relaxed">
+              {adminData.netflixShowcase.subtitle}
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-10 gap-x-12 mb-16">
+              {adminData.netflixShowcase.features.map((feature, i) => (
+                <div key={i} className="space-y-3 group/feat">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl group-hover/feat:scale-125 transition-transform duration-300">{feature.emoji}</span>
+                    <h4 className="text-white font-bold text-sm uppercase tracking-widest">{feature.title}</h4>
                   </div>
-                ))}
-              </div>
+                  <p className="text-[#555] text-xs leading-relaxed pl-9">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
 
-              <button className="mt-16 border border-gray-600 text-gray-500 px-6 md:px-8 py-2 text-[10px] md:text-xs uppercase tracking-widest hover:border-white hover:text-white transition-all">
-                Manage Profiles
-              </button>
+            <div className="flex flex-col sm:flex-row items-center gap-8 p-10 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl relative group">
+                <div className="absolute inset-0 bg-[var(--accent)]/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl -z-10"></div>
+                <div className="flex flex-col">
+                    <span className="text-gray-500 text-xs line-through mb-1 uppercase tracking-widest">{adminData.netflixShowcase.originalPrice}</span>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-white text-5xl font-black font-mono tracking-tighter">{adminData.netflixShowcase.price}</span>
+                        <span className="text-[var(--accent)] font-bold text-xs">ONLY</span>
+                    </div>
+                </div>
+                <button 
+                  onClick={() => setPurchaseModalProduct({ 
+                    id: 'netflix-showcase', 
+                    title: adminData.netflixShowcase.title, 
+                    price: adminData.netflixShowcase.price,
+                    original: adminData.netflixShowcase.originalPrice,
+                    category: 'Anniversary Sites'
+                  })}
+                  className="flex-1 w-full bg-[var(--accent)] text-white py-5 px-8 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-[0_20px_50px_rgba(var(--accent-rgb),0.3)]"
+                >
+                    Get Access →
+                </button>
             </div>
           </div>
-        </div>
 
-        {/* Feature Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12 max-w-7xl mx-auto px-6">
-          {[
-            { tag: "🎬", title: "Netflix Profile Screen", desc: "4 milestone profiles. Who's watching your love story?" },
-            { tag: "🎞️", title: "Cinematic Hero Banner", desc: "Full-screen video play, Ken Burns animation, dual gradients" },
-            { tag: "📼", title: "Scroll Rows", desc: "Horizontal scroll cards with hover popups, exactly like Netflix" },
-            { tag: "🔍", title: "Working Search", desc: "Live search across all your memories and moments" },
-            { tag: "📱", title: "5 Full Pages", desc: "Home, Our Story, Moments, Gallery, More Info — all working" },
-            { tag: "⚡", title: "One File", desc: "Single HTML/JSX file. Deploy anywhere in minutes." }
-          ].map((feat, i) => (
-            <div key={i} className="border-t border-[#1E1E1E] pt-8 group">
-              <span className="text-3xl mb-4 block group-hover:scale-110 transition-transform origin-left duration-300">{feat.tag}</span>
-              <h4 className="text-white font-semibold text-lg mb-2">{feat.title}</h4>
-              <p className="text-[#666] text-sm leading-relaxed">{feat.desc}</p>
-            </div>
-          ))}
-        </div>
+          <div className="w-full lg:w-7/12">
+             <div className="grid grid-cols-6 grid-rows-6 gap-4 h-[600px] md:h-[800px]">
+                {/* Hero Slot */}
+                <div 
+                    className="col-span-4 row-span-4 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    onClick={() => setLightboxIndex(0)}
+                >
+                    <img src={adminData.netflixShowcase.screenshots[0].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-xs uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[0].label}</span>
+                    </div>
+                </div>
+                
+                {/* Portrait Slot 1 */}
+                <div 
+                    className="col-span-2 row-span-3 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    onClick={() => setLightboxIndex(1)}
+                >
+                    <img src={adminData.netflixShowcase.screenshots[1].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[1].label}</span>
+                    </div>
+                </div>
 
-        <div className="mt-32 text-center">
-          <div className="flex items-center justify-center gap-4 mb-8">
-            <span className="text-white font-mono font-bold text-5xl">₹1,499</span>
-            <span className="text-[#444] font-mono text-2xl line-through">₹2,999</span>
+                {/* Portrait Slot 2 */}
+                <div 
+                    className="col-span-2 row-span-3 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    onClick={() => setLightboxIndex(2)}
+                >
+                    <img src={adminData.netflixShowcase.screenshots[2].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[2].label}</span>
+                    </div>
+                </div>
+
+                {/* Square Slot */}
+                <div 
+                    className="col-span-2 row-span-2 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    onClick={() => setLightboxIndex(3)}
+                >
+                    <img src={adminData.netflixShowcase.screenshots[3].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[3].label}</span>
+                    </div>
+                </div>
+
+                {/* Wide Slot */}
+                <div 
+                    className="col-span-2 row-span-2 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    onClick={() => setLightboxIndex(4)}
+                >
+                    <img src={adminData.netflixShowcase.screenshots[4].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[4].label}</span>
+                    </div>
+                </div>
+             </div>
           </div>
-          <button className="bg-[#FF3B3B] text-white px-12 py-5 rounded-lg text-xl font-bold hover:bg-[#FF3B3B]/90 transition-all shadow-[0_20px_40px_rgba(255,59,59,0.4)] mb-6">
-            Get the Netflix Template →
-          </button>
-          <p className="text-[#555] text-sm font-medium">Instant download · Fully customizable · One-time payment</p>
         </div>
       </section>
+
+        <div className="mt-32 text-center">
+          <button 
+            onClick={() => {
+                const netflix = products.find(p => p.title.toLowerCase().includes('netflix'));
+                if (netflix) {
+                  setPurchaseModalProduct({
+                    id: netflix.id,
+                    title: netflix.title,
+                    price: netflix.price,
+                    original: netflix.original,
+                    category: netflix.category
+                  });
+                } else {
+                  setPurchaseModalProduct({
+                    id: 'netflix-showcase',
+                    title: adminData.netflixShowcase.title,
+                    price: adminData.netflixShowcase.price,
+                    original: adminData.netflixShowcase.originalPrice,
+                    category: 'Anniversary Sites'
+                  });
+                }
+            }}
+            className="bg-[var(--accent)] text-white px-12 py-5 rounded-lg text-xl font-bold hover:opacity-90 transition-all shadow-[0_20px_40px_rgba(var(--accent-rgb),0.4)] mb-6"
+          >
+            Get the Netflix Template →
+          </button>
+          <p className="text-[#555] text-sm font-medium">Instant access · Fully customizable · Limited period free</p>
+        </div>
 
       {/* How It Works - Light alternate */}
       <section id="about" ref={observe} className="py-24 md:py-40 section-light border-y border-gray-100">
@@ -717,7 +1518,14 @@ export default function App() {
                 </li>
               ))}
             </ul>
-            <button className="w-full border-2 border-dark text-dark py-5 rounded-2xl font-bold hover:bg-dark hover:text-white transition-all">
+            <button 
+              onClick={() => {
+                const pdf = products.find(p => p.type === 'pdf');
+                if (pdf) setPurchaseModalProduct(pdf);
+                else alert('Artifact collection loading...');
+              }}
+              className="w-full border-2 border-dark text-dark py-5 rounded-2xl font-bold hover:bg-dark hover:text-white transition-all"
+            >
               Claim PDF
             </button>
           </div>
@@ -737,7 +1545,20 @@ export default function App() {
                 </li>
               ))}
             </ul>
-            <button className="w-full bg-[#FF3B3B] text-white py-5 rounded-2xl font-bold hover:scale-[0.98] transition-all shadow-xl">
+            <button 
+              onClick={() => {
+                const netflix = products.find(p => p.title.toLowerCase().includes('netflix'));
+                if (netflix) setPurchaseModalProduct(netflix);
+                else setPurchaseModalProduct({
+                  id: 'netflix-showcase',
+                  title: adminData.netflixShowcase.title,
+                  price: adminData.netflixShowcase.price,
+                  original: adminData.netflixShowcase.originalPrice,
+                  category: 'Anniversary Sites'
+                });
+              }}
+              className="w-full bg-[#FF3B3B] text-white py-5 rounded-2xl font-bold hover:scale-[0.98] transition-all shadow-xl"
+            >
               Get Netflix Site
             </button>
           </div>
@@ -755,12 +1576,26 @@ export default function App() {
                 </li>
               ))}
             </ul>
-            <button className="w-full border-2 border-dark text-dark py-5 rounded-2xl font-bold hover:bg-dark hover:text-white transition-all">
+            <button 
+              onClick={() => document.getElementById('collection')?.scrollIntoView({ behavior: 'smooth' })}
+              className="w-full border-2 border-dark text-dark py-5 rounded-2xl font-bold hover:bg-dark hover:text-white transition-all"
+            >
               Enter The Vault
             </button>
           </div>
         </div>
       </section>
+
+      {/* Admin Toggle - Subtle */}
+      <div className="fixed bottom-6 right-6 z-[400] opacity-40 hover:opacity-100 transition-all duration-300">
+        <button 
+          onClick={() => setAdminPanelOpen(true)}
+          className="w-12 h-12 bg-[#111] backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:scale-110 active:scale-95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all"
+          title="Admin Settings"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        </button>
+      </div>
 
       {/* Footer */}
       <footer className="pt-32 pb-12 px-6 md:px-12 bg-[#0A0A0A] border-t border-white/5">
@@ -812,9 +1647,9 @@ export default function App() {
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-[#0A0A0A] z-[200] flex flex-col p-8 md:hidden text-white">
+        <div className="fixed inset-0 bg-[#0A0A0A] z-[500] flex flex-col p-8 md:hidden text-white">
           <div className="flex justify-between items-center mb-16">
-            <span className="font-display text-2xl italic font-black text-white">FRAMD<span className="text-[#FF3B3B]">.</span></span>
+            <span className="font-display text-2xl italic font-black text-white">FRAMD<span className="text-[var(--accent)]">.</span></span>
             <button onClick={() => setMobileMenuOpen(false)} className="text-white"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
           </div>
           <div className="flex flex-col gap-8">
@@ -828,13 +1663,13 @@ export default function App() {
                 key={link.name} 
                 href={link.target}
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-4xl font-display font-bold text-white hover:text-[#FF3B3B] transition-colors"
+                className="text-4xl font-display font-bold text-white hover:text-[var(--accent)] transition-colors"
               >
                 {link.name}
               </a>
             ))}
           </div>
-          <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="mt-auto bg-[#FF3B3B] text-center text-white py-5 rounded-lg text-xl font-bold">Get Started</a>
+          <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="mt-auto bg-[var(--accent)] text-center text-white py-5 rounded-lg text-xl font-bold">Get Started</a>
         </div>
       )}
 
@@ -842,71 +1677,28 @@ export default function App() {
         <PreviewModal 
             product={selectedProduct} 
             onClose={() => setSelectedProduct(null)} 
-            onSave={() => setShowLeadForm(true)}
+            onSave={() => {
+                setPurchaseModalProduct(selectedProduct);
+                setSelectedProduct(null);
+            }}
         />
       )}
 
-      {/* Lead Form Modal */}
-      {showLeadForm && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6">
-            <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowLeadForm(false)}></div>
-            <div className="relative bg-[#111] border border-white/10 w-full max-w-md rounded-2xl p-8 shadow-2xl animate-[modalEnter_0.3s_ease-out]">
-                <div className="text-center mb-8">
-                    <span className="text-[#FF3B3B] font-mono text-[10px] uppercase tracking-widest block mb-2">Request Access</span>
-                    <h2 className="text-2xl font-bold text-white italic">Artifact: {selectedProduct?.title}</h2>
-                    <p className="text-gray-500 text-xs mt-2 leading-relaxed">Submit your details so we can customize this for you. We'll reach out within 6-12 hours.</p>
-                </div>
-                <form onSubmit={handleLeadSubmit} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">Full Name</label>
-                        <input 
-                            required
-                            placeholder="John Doe"
-                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors"
-                            value={leadFormData.name}
-                            onChange={e => setLeadFormData({...leadFormData, name: e.target.value})}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">Email Address</label>
-                        <input 
-                            required
-                            type="email"
-                            placeholder="john@example.com"
-                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors"
-                            value={leadFormData.email}
-                            onChange={e => setLeadFormData({...leadFormData, email: e.target.value})}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">WhatsApp Number</label>
-                        <input 
-                            required
-                            placeholder="+91 XXXXX XXXXX"
-                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors"
-                            value={leadFormData.phone}
-                            onChange={e => setLeadFormData({...leadFormData, phone: e.target.value})}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] uppercase tracking-widest text-gray-600 font-mono">Occasion / Details</label>
-                        <textarea 
-                            required
-                            placeholder="Anniversary, Birthday, etc."
-                            className="w-full bg-black border border-white/5 rounded-xl p-4 text-white outline-none focus:border-[#FF3B3B] transition-colors h-24 resize-none"
-                            value={leadFormData.occasion}
-                            onChange={e => setLeadFormData({...leadFormData, occasion: e.target.value})}
-                        />
-                    </div>
-                    <button 
-                        disabled={submittingLead}
-                        className="w-full bg-[#FF3B3B] text-white py-4 rounded-xl font-bold hover:bg-[#FF3B3B]/90 transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
-                    >
-                        {submittingLead ? 'Submitting...' : 'Submit Request'}
-                    </button>
-                </form>
-            </div>
-        </div>
+      {/* Admin Side Panel */}
+      <AdminSidePanel 
+        isOpen={adminPanelOpen} 
+        onClose={() => setAdminPanelOpen(false)} 
+        data={adminData} 
+        onUpdate={setAdminData} 
+      />
+
+      {/* Purchase Modal */}
+      {purchaseModalProduct && (
+        <PurchaseModal 
+          product={purchaseModalProduct} 
+          isOpen={!!purchaseModalProduct} 
+          onClose={() => setPurchaseModalProduct(null)} 
+        />
       )}
 
       {/* Styles */}
@@ -923,10 +1715,20 @@ export default function App() {
           from { transform: translateY(100%); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
+        @keyframes slideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes scaleIn {
+          from { opacity: 0; transform: scale(0.8); }
+          to { opacity: 1; transform: scale(1); }
+        }
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );
