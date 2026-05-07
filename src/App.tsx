@@ -5,9 +5,10 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { db, storage } from './lib/firebase';
+import { db, storage, auth } from './lib/firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
 // --- DATA ---
 
@@ -952,6 +953,13 @@ export default function App() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+  }, []);
 
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -963,6 +971,23 @@ export default function App() {
   }, [mobileMenuOpen]);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [purchaseModalProduct, setPurchaseModalProduct] = useState<any>(null);
+
+  const handleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error('Login failed:', err);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+  };
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -1587,15 +1612,17 @@ export default function App() {
       </section>
 
       {/* Admin Toggle - Subtle */}
-      <div className="fixed bottom-6 right-6 z-[400] opacity-40 hover:opacity-100 transition-all duration-300">
-        <button 
-          onClick={() => setAdminPanelOpen(true)}
-          className="w-12 h-12 bg-[#111] backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:scale-110 active:scale-95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all"
-          title="Admin Settings"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-        </button>
-      </div>
+      {user?.email === 'deeagrawal078@gmail.com' && (
+        <div className="fixed bottom-6 right-6 z-[400] opacity-40 hover:opacity-100 transition-all duration-300">
+          <button 
+            onClick={() => setAdminPanelOpen(true)}
+            className="w-12 h-12 bg-[#111] backdrop-blur-xl border border-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:scale-110 active:scale-95 shadow-[0_20px_50px_rgba(0,0,0,0.5)] transition-all"
+            title="Admin Settings"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+          </button>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="pt-32 pb-12 px-6 md:px-12 bg-[#0A0A0A] border-t border-white/5">
@@ -1636,8 +1663,22 @@ export default function App() {
 
         <div className="max-w-7xl mx-auto pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
           <p className="text-[#444] text-[10px] uppercase font-mono tracking-widest">© 2025 FRAMD. Made with ❤️ for moments that matter.</p>
-          <div className="flex gap-8">
-            <Link to="/admin" className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors">Admin</Link>
+          <div className="flex items-center gap-8">
+            {!user ? (
+              <button 
+                onClick={handleLogin}
+                className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors cursor-pointer"
+              >
+                Admin Login
+              </button>
+            ) : (
+              <button 
+                onClick={handleLogout}
+                className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors cursor-pointer"
+              >
+                Logout ({user.email})
+              </button>
+            )}
             {['Privacy', 'Terms', 'Refund Policy'].map(l => (
               <a key={l} href="#" className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors">{l}</a>
             ))}
