@@ -77,8 +77,8 @@ const PurchaseModal = ({ product, isOpen, onClose }: { product: any, isOpen: boo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/92 backdrop-blur-md animate-[fadeIn_0.3s_ease-out]">
-      <div className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full max-w-[560px] p-8 md:p-12 overflow-y-auto max-h-[95vh] no-scrollbar">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-[fadeIn_0.3s_ease-out]">
+      <div className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full max-w-[560px] p-6 sm:p-8 md:p-12 overflow-y-auto max-h-[95vh] no-scrollbar">
         <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
@@ -86,14 +86,14 @@ const PurchaseModal = ({ product, isOpen, onClose }: { product: any, isOpen: boo
         {step === 'form' ? (
           <div>
             <span className="font-mono text-[11px] text-[var(--accent)] tracking-widest font-bold mb-3 block uppercase">✦ ONE-TIME PURCHASE</span>
-            <h2 className="font-display text-3xl text-white font-bold mb-2">Get {product.title}</h2>
-            <p className="text-gray-500 text-sm mb-8">Fill in your details and we'll deliver your template instantly.</p>
+            <h2 className="font-display text-2xl md:text-3xl text-white font-bold mb-2">Get {product.title}</h2>
+            <p className="text-gray-500 text-sm mb-6 md:mb-8">Fill in your details and we'll deliver your template instantly.</p>
             
             <div className="flex items-center gap-4 mb-4">
                <span className="text-3xl font-bold text-white">{product.price}</span>
                {product.original && <span className="text-gray-600 line-through text-sm">{product.original}</span>}
             </div>
-            <div className="space-y-2 mb-8">
+            <div className="space-y-2 mb-6 md:mb-8">
                <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Instant delivery</p>
                <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Full source code</p>
                <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Setup guide included</p>
@@ -743,7 +743,7 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
       onClick={onClose}
     >
       <div 
-        className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full max-w-6xl h-[90vh] overflow-hidden flex flex-col md:flex-row animate-[modalEnter_0.4s_ease-out]"
+        className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full max-w-6xl h-auto max-h-[92vh] md:h-[90vh] overflow-y-auto md:overflow-hidden flex flex-col md:flex-row animate-[modalEnter_0.4s_ease-out]"
         onClick={(e: React.MouseEvent) => e.stopPropagation()}
       >
         <button 
@@ -756,25 +756,27 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
         </button>
 
         {/* Preview Area */}
-        <div className="flex-1 overflow-y-auto no-scrollbar bg-[#0A0A0A] p-4 md:p-12">
-          <div className="max-w-3xl mx-auto space-y-12">
+        <div className="w-full md:flex-1 min-h-[300px] md:min-h-0 overflow-y-visible md:overflow-y-auto no-scrollbar bg-[#0A0A0A] p-4 md:p-12 order-1 md:order-1">
+          <div className="max-w-3xl mx-auto space-y-8 md:space-y-12">
             {product.type === 'pdf' && product.pdfUrl ? (
-              <div className="w-full min-h-[500px] md:min-h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative">
-                {/* Fallback for mobile since standard iFrame PDF view often fails */}
-                <iframe 
-                  src={`https://docs.google.com/viewer?url=${encodeURIComponent(product.pdfUrl)}&embedded=true`}
-                  className="w-full h-[500px] md:h-[800px]"
-                  title="PDF Preview"
-                />
-                <div className="md:hidden p-4 bg-black/5 flex justify-center">
+              <div className="flex flex-col gap-4">
+                <div className="md:hidden bg-white/5 border border-white/10 rounded-xl p-6 text-center">
+                    <p className="text-gray-400 text-xs mb-4 uppercase tracking-widest font-mono">Mobile PDF View</p>
                     <a 
                         href={product.pdfUrl} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-xs font-mono uppercase tracking-widest text-[#FF3B3B] font-bold underline"
+                        className="inline-block bg-[#FF3B3B] text-white px-8 py-3 rounded-full text-xs font-bold shadow-xl active:scale-95 transition-transform"
                     >
-                        Open Full PDF In New Tab
+                        View Full Artifact (PDF)
                     </a>
+                </div>
+                <div className="w-full h-[500px] md:h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative">
+                  <iframe 
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(product.pdfUrl)}&embedded=true`}
+                    className="w-full h-full border-0"
+                    title="PDF Preview"
+                  />
                 </div>
               </div>
             ) : product.imageUrl ? (
@@ -804,28 +806,28 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
         </div>
 
         {/* Info Sidebar */}
-        <div className="w-full md:w-[400px] bg-[#161616] border-l border-[#2A2A2A] p-10 flex flex-col overflow-y-auto">
-          <div className="mb-10">
-            <span className="font-mono text-[10px] text-[#FF3B3B] tracking-[0.3em] uppercase mb-3 block font-bold">{product.category}</span>
-            <h2 className="font-display text-4xl font-bold text-white mb-6 leading-tight">{product.title}</h2>
+        <div className="w-full md:w-[400px] bg-[#161616] border-l border-[#2A2A2A] p-4 md:p-10 flex flex-col shrink-0 order-2 md:overflow-y-auto">
+          <div className="mb-6 md:mb-10">
+            <span className="font-mono text-[9px] text-[#FF3B3B] tracking-[0.3em] uppercase mb-2 block font-bold">{product.category}</span>
+            <h2 className="font-display text-2xl md:text-4xl font-bold text-white mb-4 leading-tight">{product.title}</h2>
             <div className="flex items-center gap-3">
-              <span className={`px-3 py-1 text-[10px] font-mono font-medium rounded-full ${
+              <span className={`px-2 py-0.5 text-[9px] font-mono font-medium rounded-full ${
                 product.type === 'pdf' ? 'bg-[#FFD60A] text-black' : 'bg-[#FF3B3B] text-white'
               }`}>
                 {product.type.toUpperCase()}
               </span>
-              <span className="text-green-500 text-xs font-bold uppercase tracking-widest">Available Now</span>
+              <span className="text-green-500 text-[10px] font-bold uppercase tracking-widest">Available</span>
             </div>
           </div>
 
-          <div className="space-y-8 mb-12">
+          <div className="space-y-6 mb-8">
             <div>
-              <h4 className="text-white text-xs font-bold uppercase tracking-widest mb-4 opacity-50">About this Template</h4>
-              <p className="text-[#888] text-sm leading-relaxed whitespace-pre-wrap">{product.desc}</p>
+              <h4 className="text-white text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">About this Template</h4>
+              <p className="text-[#888] text-xs leading-relaxed whitespace-pre-wrap">{product.desc}</p>
             </div>
 
             <div>
-              <h4 className="text-white text-xs font-bold uppercase tracking-widest mb-4 opacity-50">What's Inside</h4>
+              <h4 className="text-white text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">What's Inside</h4>
               <ul className="text-[#888] text-sm space-y-3">
                 {(product.whatsInside && product.whatsInside.length > 0 ? product.whatsInside : ['High-fidelity resolution', 'Fully editable source files', 'Documentation included']).map((item: string, i: number) => (
                   <li key={i} className="flex items-center gap-2">
@@ -859,7 +861,7 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
   );
 };
 
-const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) => void }> = ({ product, observe, onPreview }) => {
+const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) => void, onSave: (p: any) => void }> = ({ product, observe, onPreview, onSave }) => {
   const [isLiked, setIsLiked] = useState(false);
 
   return (
@@ -917,7 +919,15 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
           <span className="text-[10px] font-mono text-[#666] uppercase">{product.type === 'pdf' ? 'Printable' : 'Interactive'}</span>
         </div>
         <h3 className="text-white font-bold text-xl leading-tight mb-3 group-hover:text-[#FF3B3B] transition-colors cursor-pointer" onClick={() => onPreview(product)}>{product.title}</h3>
-        <p className="text-[#666] text-sm mb-6 line-clamp-2 leading-relaxed">{product.desc}</p>
+        <p className="text-[#666] text-sm mb-2 line-clamp-2 leading-relaxed">{product.desc}</p>
+        
+        {/* Mobile Save Button */}
+        <button 
+            onClick={() => onSave(product)}
+            className="md:hidden w-full bg-[#111] border border-white/5 text-white py-3 rounded-lg text-xs font-bold active:scale-95 transition-transform mb-6"
+        >
+            Save to Library +
+        </button>
         
         <div className="mt-auto flex items-center justify-between pt-6 border-t border-white/5">
           <div className="flex flex-col">
@@ -1194,12 +1204,12 @@ export default function App() {
             </div>
             
             <h1 className="flex flex-col text-white mb-8 overflow-hidden">
-              <span className="font-display text-7xl md:text-[110px] italic leading-[0.85] animate-[slideUp_1s_ease-out_forwards]">{adminData.heroTitlePart1}</span>
-              <span className="font-display text-7xl md:text-[110px] font-black leading-[0.85] animate-[slideUp_1s_ease-out_0.2s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart2}</span>
-              <span className="font-display text-7xl md:text-[110px] italic text-[var(--accent)] leading-[0.85] animate-[slideUp_1s_ease-out_0.4s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart3}</span>
+              <span className="font-display text-3xl sm:text-7xl md:text-[110px] italic leading-[0.85] animate-[slideUp_1s_ease-out_forwards]">{adminData.heroTitlePart1}</span>
+              <span className="font-display text-3xl sm:text-7xl md:text-[110px] font-black leading-[0.85] animate-[slideUp_1s_ease-out_0.2s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart2}</span>
+              <span className="font-display text-3xl sm:text-7xl md:text-[110px] italic text-[var(--accent)] leading-[0.85] animate-[slideUp_1s_ease-out_0.4s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart3}</span>
             </h1>
 
-            <p className="text-[#888] text-xl md:text-2xl max-w-xl mb-12 font-light leading-relaxed animate-[fadeIn_1.5s_ease-out_0.6s_forwards] opacity-0">
+            <p className="text-[#888] text-lg md:text-2xl max-w-xl mb-12 font-light leading-relaxed animate-[fadeIn_1.5s_ease-out_0.6s_forwards] opacity-0">
               {adminData.heroDescription}
             </p>
 
@@ -1213,7 +1223,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="w-full md:w-1/2 relative h-[500px] md:h-[650px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
+          <div className="w-full md:w-1/2 relative h-[400px] md:h-[650px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
             <div className="absolute inset-0 flex items-center justify-center">
               {(adminData.heroImages.length > 0 ? adminData.heroImages : [null, null, null]).slice(0, 5).map((url, i, arr) => {
                 const total = arr.length;
@@ -1222,12 +1232,12 @@ export default function App() {
                 return (
                   <div 
                     key={i}
-                    className="absolute w-[280px] h-[400px] md:w-[320px] md:h-[450px] rounded-3xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_60px_120px_rgba(0,0,0,0.9)] animate-float"
+                    className="absolute w-[200px] h-[280px] md:w-[320px] md:h-[450px] rounded-3xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_60px_120px_rgba(0,0,0,0.9)] animate-float shrink-0"
                     style={{ 
                       '--rot': `${-12 + (i * 8)}deg`,
                       animationDelay: `${i * 1.5}s`,
                       zIndex: i,
-                      transform: `translateX(${offset * (total > 3 ? 60 : 100)}px) rotateY(${-20 + (i * 10)}deg) translateY(${Math.abs(offset) * 20}px) rotateZ(${offset * 5}deg)`,
+                      transform: `translateX(${offset * (total > 3 ? (window.innerWidth < 768 ? 40 : 60) : (window.innerWidth < 768 ? 60 : 100))}px) rotateY(${-20 + (i * 10)}deg) translateY(${Math.abs(offset) * 15}px) rotateZ(${offset * 5}deg)`,
                       opacity: i === Math.floor(total/2) ? 1 : 0.6
                     }}
                     onClick={() => featured && setSelectedProduct(featured)}
@@ -1304,7 +1314,7 @@ export default function App() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
             {filteredProducts.length > 0 ? (
               filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} observe={observe} onPreview={setSelectedProduct} />
+                <ProductCard key={product.id} product={product} observe={observe} onPreview={setSelectedProduct} onSave={setPurchaseModalProduct} />
               ))
             ) : (
                 <div className="col-span-full py-40 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center">
@@ -1369,58 +1379,58 @@ export default function App() {
           </div>
 
           <div className="w-full lg:w-7/12">
-             <div className="grid grid-cols-6 grid-rows-6 gap-4 h-[600px] md:h-[800px]">
+             <div className="grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[800px]">
                 {/* Hero Slot */}
                 <div 
-                    className="col-span-4 row-span-4 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
                     onClick={() => setLightboxIndex(0)}
                 >
                     <img src={adminData.netflixShowcase.screenshots[0].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                        <span className="text-white font-mono text-xs uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[0].label}</span>
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 md:p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[0].label}</span>
                     </div>
                 </div>
                 
                 {/* Portrait Slot 1 */}
                 <div 
-                    className="col-span-2 row-span-3 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
                     onClick={() => setLightboxIndex(1)}
                 >
                     <img src={adminData.netflixShowcase.screenshots[1].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
-                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[1].label}</span>
                     </div>
                 </div>
 
                 {/* Portrait Slot 2 */}
                 <div 
-                    className="col-span-2 row-span-3 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
                     onClick={() => setLightboxIndex(2)}
                 >
                     <img src={adminData.netflixShowcase.screenshots[2].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
-                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[2].label}</span>
                     </div>
                 </div>
 
                 {/* Square Slot */}
                 <div 
-                    className="col-span-2 row-span-2 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
                     onClick={() => setLightboxIndex(3)}
                 >
                     <img src={adminData.netflixShowcase.screenshots[3].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
-                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[3].label}</span>
                     </div>
                 </div>
 
                 {/* Wide Slot */}
                 <div 
-                    className="col-span-2 row-span-2 group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
                     onClick={() => setLightboxIndex(4)}
                 >
                     <img src={adminData.netflixShowcase.screenshots[4].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
-                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                   <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[4].label}</span>
                     </div>
                 </div>
@@ -1504,9 +1514,9 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex gap-8 overflow-x-auto no-scrollbar px-6 md:px-12 py-12 max-w-7xl mx-auto">
+        <div className="flex gap-6 md:gap-8 overflow-x-auto no-scrollbar px-6 md:px-12 py-12 max-w-7xl mx-auto">
           {testimonials.map((t, idx) => (
-            <div key={idx} className="w-[350px] shrink-0 bg-[#0D0D0D] border border-white/5 rounded-2xl p-10 transition-all hover:border-white/10 hover:-translate-y-2 group">
+            <div key={idx} className="w-[280px] sm:w-[350px] shrink-0 bg-[#0D0D0D] border border-white/5 rounded-2xl p-8 md:p-10 transition-all hover:border-white/10 hover:-translate-y-2 group">
               <div className="text-[#FFD60A] text-2xl mb-8 opacity-50 group-hover:opacity-100 italic">"</div>
               <p className="text-white italic text-lg leading-relaxed mb-12 min-h-[140px] font-medium opacity-80 group-hover:opacity-100 transition-opacity">"{t.text}"</p>
               <div className="flex items-center gap-4">
@@ -1555,7 +1565,7 @@ export default function App() {
             </button>
           </div>
 
-          <div className="bg-dark text-white p-12 rounded-3xl relative shadow-[0_40px_100px_rgba(0,0,0,0.2)] scale-[1.05] z-10 overflow-hidden">
+          <div className="bg-dark text-white p-12 rounded-3xl relative shadow-[0_40px_100px_rgba(0,0,0,0.2)] md:scale-[1.05] z-10 overflow-hidden">
             <div className="absolute top-0 right-0 p-4">
                 <span className="bg-[#FF3B3B] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Premium</span>
             </div>
@@ -1693,7 +1703,7 @@ export default function App() {
             <span className="font-display text-2xl italic font-black text-white">FRAMD<span className="text-[var(--accent)]">.</span></span>
             <button onClick={() => setMobileMenuOpen(false)} className="text-white"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
           </div>
-          <div className="flex flex-col gap-8">
+          <div className="flex flex-col gap-4">
             {[
               { name: 'Templates', target: '#templates' },
               { name: 'Netflix Sites', target: '#netflix-sites' },
@@ -1704,7 +1714,7 @@ export default function App() {
                 key={link.name} 
                 href={link.target}
                 onClick={() => setMobileMenuOpen(false)}
-                className="text-4xl font-display font-bold text-white hover:text-[var(--accent)] transition-colors"
+                className="text-lg md:text-3xl font-display font-bold text-white hover:text-[var(--accent)] transition-colors active:scale-95 transition-transform origin-left"
               >
                 {link.name}
               </a>
