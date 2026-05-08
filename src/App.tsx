@@ -247,9 +247,10 @@ function useIntersectionObserver() {
 
 // --- ADMIN SIDE PANEL ---
 const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, onClose: () => void, data: any, onUpdate: (newData: any) => void }) => {
-  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads'>('netflix');
+  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads' | 'howItWorks'>('netflix');
   const [localData, setLocalData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [leads, setLeads] = useState<any[]>([]);
 
@@ -358,6 +359,7 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
           {[
             { id: 'netflix', label: 'Netflix Block' },
             { id: 'settings', label: 'Hero & Identity' },
+            { id: 'howItWorks', label: 'How It Works' },
             { id: 'products', label: 'Artifacts' },
             { id: 'leads', label: 'User Leads' }
           ].map(tab => (
@@ -374,6 +376,80 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-10 no-scrollbar pb-32">
+          {activeTab === 'howItWorks' && (
+            <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
+                <div className="space-y-4">
+                     <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Section Content</h3>
+                     <div className="space-y-2">
+                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Title (use \n for newline)</label>
+                          <textarea 
+                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none h-20 resize-none"
+                              value={localData.howItWorks.title}
+                              onChange={e => setLocalData({...localData, howItWorks: {...localData.howItWorks, title: e.target.value}})}
+                          />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Image</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="w-full text-white text-sm"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    setUploading(true);
+                                    try {
+                                        const storageRef = ref(storage, `howItWorks/${Date.now()}_${file.name}`);
+                                        const snapshot = await uploadBytes(storageRef, file);
+                                        const downloadURL = await getDownloadURL(snapshot.ref);
+                                        setLocalData({ ...localData, howItWorks: { ...localData.howItWorks, imageUrl: downloadURL } });
+                                    } catch (err) {
+                                        console.error('Error uploading:', err);
+                                        alert('Error uploading image');
+                                    } finally {
+                                        setUploading(false);
+                                    }
+                                }
+                            }}
+                        />
+                        {uploading && <div className="text-white text-xs">Uploading...</div>}
+                        <img src={localData.howItWorks.imageUrl} alt="preview" className="max-w-full h-auto rounded mt-2"/>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Steps</h3>
+                    {localData.howItWorks.steps.map((step: any, idx: number) => (
+                        <div key={idx} className="p-4 bg-white/5 rounded-xl border border-white/5 flex gap-4">
+                            <span className="text-xl shrink-0 font-bold text-gray-500">{step.num}</span>
+                            <div className="flex-1 space-y-2">
+                                <input 
+                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-xs font-bold"
+                                    value={step.title}
+                                    placeholder="Step Title"
+                                    onChange={e => {
+                                        const newS = [...localData.howItWorks.steps];
+                                        newS[idx].title = e.target.value;
+                                        setLocalData({...localData, howItWorks: {...localData.howItWorks, steps: newS}});
+                                    }}
+                                />
+                                <textarea 
+                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-[11px] opacity-60 h-16 resize-none"
+                                    placeholder="Step Description"
+                                    value={step.desc}
+                                    onChange={e => {
+                                        const newS = [...localData.howItWorks.steps];
+                                        newS[idx].desc = e.target.value;
+                                        setLocalData({...localData, howItWorks: {...localData.howItWorks, steps: newS}});
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+          )}
+
           {activeTab === 'netflix' && (
             <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
               <div className="space-y-4">
@@ -760,23 +836,18 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
           <div className="max-w-3xl mx-auto space-y-8 md:space-y-12">
             {product.type === 'pdf' && product.pdfUrl ? (
               <div className="flex flex-col gap-4">
-                <div className="md:hidden bg-white/5 border border-white/10 rounded-xl p-6 text-center">
-                    <p className="text-gray-400 text-xs mb-4 uppercase tracking-widest font-mono">Mobile PDF View</p>
-                    <a 
-                        href={product.pdfUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="inline-block bg-[#FF3B3B] text-white px-8 py-3 rounded-full text-xs font-bold shadow-xl active:scale-95 transition-transform"
-                    >
-                        View Full Artifact (PDF)
-                    </a>
-                </div>
-                <div className="w-full h-[500px] md:h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative">
+                    <div 
+                    className="w-full h-[500px] md:h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative select-none"
+                    onContextMenu={(e) => e.preventDefault()}
+                >
                   <iframe 
                     src={`https://docs.google.com/viewer?url=${encodeURIComponent(product.pdfUrl)}&embedded=true`}
                     className="w-full h-full border-0"
                     title="PDF Preview"
                   />
+                  <div className="absolute bottom-2 left-2 text-[8px] text-gray-500 opacity-50 z-20 pointer-events-none">
+                    Preview only. Unauthorized reproduction prohibited.
+                  </div>
                 </div>
               </div>
             ) : product.imageUrl ? (
@@ -861,8 +932,28 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
   );
 };
 
+import { Share2 } from 'lucide-react';
+/* ... (existing imports) */
+
 const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) => void, onSave: (p: any) => void }> = ({ product, observe, onPreview, onSave }) => {
   const [isLiked, setIsLiked] = useState(false);
+
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: product.title,
+          url: window.location.href, // Or a specific product page URL
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Link copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Error sharing:', err);
+    }
+  };
 
   return (
     <div 
@@ -904,6 +995,13 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
         </div>
 
         <button 
+            onClick={handleShare}
+            className="absolute bottom-4 left-4 z-20 text-white/70 hover:text-white transition-all transform hover:scale-125"
+        >
+            <Share2 className="w-5 h-5 drop-shadow-lg" />
+        </button>
+
+        <button 
             onClick={(e) => { e.stopPropagation(); setIsLiked(!isLiked); }}
             className={`absolute bottom-4 right-4 z-20 transition-all transform hover:scale-125 ${isLiked ? 'text-[#FF3B3B]' : 'text-white/70 hover:text-white'}`}
         >
@@ -912,6 +1010,7 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
             </svg>
         </button>
       </div>
+
 
       <div className="p-6 flex flex-col h-full">
         <div className="flex items-center justify-between mb-3">
@@ -1029,6 +1128,7 @@ export default function App() {
     };
     stats: { number: string; label: string }[];
     footerTagline: string;
+    howItWorks: { title: string; subtitle: string; imageUrl: string; steps: { num: string; title: string; desc: string }[] };
   }>({
     siteName: 'FRAMD',
     accentColor: '#FF3B3B',
@@ -1066,7 +1166,17 @@ export default function App() {
       { number: '180+', label: 'Websites Built' },
       { number: '4.9★', label: 'Rating' }
     ],
-    footerTagline: 'Templates for moments that matter.'
+    footerTagline: 'Templates for moments that matter.',
+    howItWorks: {
+      title: 'Crafting Memories Made Easy.',
+      subtitle: 'A few simple steps to your cinematic website.',
+      imageUrl: 'https://picsum.photos/800/1000?random=88',
+      steps: [
+        { num: '01', title: 'Browse & Choose', desc: 'Select from our signature Netflix experiences or elegant PDF layouts.' },
+        { num: '02', title: 'Personalize Effortlessly', desc: 'Add your names, dates, and the photos that defined your year.' },
+        { num: '03', title: 'Instant Delivery', desc: 'Download the source or site package immediately. Ready to share.' }
+      ]
+    }
   });
 
   const observe = useIntersectionObserver();
@@ -1102,7 +1212,8 @@ export default function App() {
             ...data.netflixShowcase
           } : prev.netflixShowcase,
           stats: data.stats || prev.stats,
-          footerTagline: data.footerTagline || prev.footerTagline
+          footerTagline: data.footerTagline || prev.footerTagline,
+          howItWorks: data.howItWorks || prev.howItWorks
         }));
 
         if (data.accentColor) {
@@ -1474,13 +1585,9 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
                 <div>
                      <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">✦ How it Works</span>
-                     <h2 className="font-display text-5xl md:text-7xl font-black mb-12 leading-tight">Crafting Memories <br/>Made Easy.</h2>
+                     <h2 className="font-display text-5xl md:text-7xl font-black mb-12 leading-tight" dangerouslySetInnerHTML={{ __html: adminData.howItWorks.title.replace('\n', '<br/>') }}></h2>
                      <div className="space-y-12">
-                         {[
-                            { num: "01", title: "Browse & Choose", desc: "Select from our signature Netflix experiences or elegant PDF layouts." },
-                            { num: "02", title: "Personalize Effortlessly", desc: "Add your names, dates, and the photos that defined your year." },
-                            { num: "03", title: "Instant Delivery", desc: "Download the source or site package immediately. Ready to share." }
-                         ].map(step => (
+                         {adminData.howItWorks.steps.map(step => (
                              <div key={step.num} className="flex gap-8 group">
                                  <span className="font-display text-5xl text-gray-200 group-hover:text-[#FF3B3B] transition-colors">{step.num}</span>
                                  <div>
@@ -1493,7 +1600,7 @@ export default function App() {
                 </div>
                 <div className="relative">
                     <div className="absolute inset-0 bg-gray-200 rounded-3xl transform rotate-3 scale-95 opacity-50"></div>
-                    <img src="https://picsum.photos/800/1000?random=88" className="w-full aspect-[4/5] object-cover rounded-3xl relative z-10 shadow-2xl" alt="About" />
+                    <img src={adminData.howItWorks.imageUrl} className="w-full aspect-[4/5] object-cover rounded-3xl relative z-10 shadow-2xl" alt="About" />
                 </div>
             </div>
         </div>
