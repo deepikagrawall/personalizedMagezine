@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { motion } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { db, storage, auth } from './lib/firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -247,10 +248,9 @@ function useIntersectionObserver() {
 
 // --- ADMIN SIDE PANEL ---
 const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, onClose: () => void, data: any, onUpdate: (newData: any) => void }) => {
-  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads' | 'howItWorks'>('netflix');
+  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads'>('netflix');
   const [localData, setLocalData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
   const [leads, setLeads] = useState<any[]>([]);
 
@@ -389,31 +389,13 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
                           />
                      </div>
                      <div className="space-y-2">
-                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Image</label>
+                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Image URL</label>
                         <input
-                            type="file"
-                            accept="image/*"
-                            className="w-full text-white text-sm"
-                            onChange={async (e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                    setUploading(true);
-                                    try {
-                                        const storageRef = ref(storage, `howItWorks/${Date.now()}_${file.name}`);
-                                        const snapshot = await uploadBytes(storageRef, file);
-                                        const downloadURL = await getDownloadURL(snapshot.ref);
-                                        setLocalData({ ...localData, howItWorks: { ...localData.howItWorks, imageUrl: downloadURL } });
-                                    } catch (err) {
-                                        console.error('Error uploading:', err);
-                                        alert('Error uploading image');
-                                    } finally {
-                                        setUploading(false);
-                                    }
-                                }
-                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
+                            value={localData.howItWorks.imageUrl}
+                            onChange={e => setLocalData({...localData, howItWorks: {...localData.howItWorks, imageUrl: e.target.value}})}
                         />
-                        {uploading && <div className="text-white text-xs">Uploading...</div>}
-                        <img src={localData.howItWorks.imageUrl} alt="preview" className="max-w-full h-auto rounded mt-2"/>
+                        <img src={localData.howItWorks.imageUrl} alt="preview" className="w-20 h-20 object-cover rounded mt-2"/>
                     </div>
                 </div>
 
@@ -932,28 +914,8 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
   );
 };
 
-import { Share2 } from 'lucide-react';
-/* ... (existing imports) */
-
 const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) => void, onSave: (p: any) => void }> = ({ product, observe, onPreview, onSave }) => {
   const [isLiked, setIsLiked] = useState(false);
-
-  const handleShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: product.title,
-          url: window.location.href, // Or a specific product page URL
-        });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        alert('Link copied to clipboard!');
-      }
-    } catch (err) {
-      console.error('Error sharing:', err);
-    }
-  };
 
   return (
     <div 
@@ -995,13 +957,6 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
         </div>
 
         <button 
-            onClick={handleShare}
-            className="absolute bottom-4 left-4 z-20 text-white/70 hover:text-white transition-all transform hover:scale-125"
-        >
-            <Share2 className="w-5 h-5 drop-shadow-lg" />
-        </button>
-
-        <button 
             onClick={(e) => { e.stopPropagation(); setIsLiked(!isLiked); }}
             className={`absolute bottom-4 right-4 z-20 transition-all transform hover:scale-125 ${isLiked ? 'text-[#FF3B3B]' : 'text-white/70 hover:text-white'}`}
         >
@@ -1010,7 +965,6 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
             </svg>
         </button>
       </div>
-
 
       <div className="p-6 flex flex-col h-full">
         <div className="flex items-center justify-between mb-3">
@@ -1302,10 +1256,10 @@ export default function App() {
       </nav>
 
       {/* Hero */}
-      <section ref={observe} className="min-h-screen flex flex-col items-center justify-center pt-24 px-6 md:px-12 pb-16 relative overflow-hidden grain section-dark">
-        {/* Animated Background Elements */}
-        <div className="absolute top-[-10%] right-[-10%] w-[800px] h-[800px] bg-[var(--accent)]/10 blur-[180px] rounded-full pointer-events-none -z-10 animate-[pulse_10s_infinite_alternate]"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-[#FFD60A]/5 blur-[150px] rounded-full pointer-events-none -z-10 animate-[pulse_8s_infinite_alternate-reverse]"></div>
+      <section ref={observe} className="min-h-screen flex flex-col items-center justify-center pt-24 px-6 md:px-12 pb-16 relative overflow-hidden grain section-dark grid-pattern">
+        {/* Animated Background Elements - Refined */}
+        <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[var(--accent)]/5 blur-[200px] rounded-full pointer-events-none -z-10 animate-[pulse_15s_infinite_ease-in-out]"></div>
+        <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-blue-500/5 blur-[200px] rounded-full pointer-events-none -z-10 animate-[pulse_20s_infinite_ease-in-out]"></div>
         
         <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-24 relative z-20">
           <div className="w-full md:w-1/2 flex flex-col items-start text-balance">
@@ -1343,16 +1297,29 @@ export default function App() {
                 return (
                   <div 
                     key={i}
-                    className="absolute w-[200px] h-[280px] md:w-[320px] md:h-[450px] rounded-3xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_60px_120px_rgba(0,0,0,0.9)] animate-float shrink-0"
+                    className="absolute w-[200px] h-[280px] md:w-[320px] md:h-[450px] rounded-3xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_60px_120px_rgba(0,0,0,0.9)] shrink-0"
                     style={{ 
                       '--rot': `${-12 + (i * 8)}deg`,
-                      animationDelay: `${i * 1.5}s`,
                       zIndex: i,
                       transform: `translateX(${offset * (total > 3 ? (window.innerWidth < 768 ? 40 : 60) : (window.innerWidth < 768 ? 60 : 100))}px) rotateY(${-20 + (i * 10)}deg) translateY(${Math.abs(offset) * 15}px) rotateZ(${offset * 5}deg)`,
-                      opacity: i === Math.floor(total/2) ? 1 : 0.6
                     }}
                     onClick={() => featured && setSelectedProduct(featured)}
                   >
+                    <motion.div
+                        className="w-full h-full"
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: i === Math.floor(total/2) ? 1 : 0.6 }}
+                        viewport={{ once: true, amount: 0.2 }}
+                        animate={{
+                            y: [0, -20, 0],
+                            rotate: [-2, 2, -2],
+                        }}
+                        transition={{
+                            opacity: { duration: 1 },
+                            y: { repeat: Infinity, duration: 4 + (i % 2), ease: "easeInOut", delay: i * 0.2 },
+                            rotate: { repeat: Infinity, duration: 8 + (i % 2), ease: "easeInOut", delay: i * 0.2 },
+                        }}
+                    >
                     <img 
                         src={url || featured?.imageUrl || `https://picsum.photos/800/1100?random=${50+i}`} 
                         className="w-full h-full object-cover grayscale-[0.2] hover:grayscale-0 transition-all duration-700 cursor-pointer" 
@@ -1363,6 +1330,7 @@ export default function App() {
                       <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-1 block">{featured?.category || `Series 0${i+1}`}</span>
                       <span className="text-white font-display text-xl">{featured?.title || `Artifact_0${i+1}`}</span>
                     </div>
+                    </motion.div>
                   </div>
                 )
               })}
