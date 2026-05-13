@@ -283,7 +283,14 @@ function useIntersectionObserver() {
 // --- COMPONENTS ---
 
 // --- ADMIN SIDE PANEL ---
-const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, onClose: () => void, data: any, onUpdate: (newData: any) => void }) => {
+const AdminSidePanel = ({ isOpen, onClose, data, onUpdate, products, categoriesFromDB }: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  data: any; 
+  onUpdate: (newData: any) => void;
+  products: any[];
+  categoriesFromDB: string[];
+}) => {
   const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads' | 'howItWorks' | 'curatedSelection'>('netflix');
   const [localData, setLocalData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
@@ -291,6 +298,13 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
   const [uploadingHowItWorks, setUploadingHowItWorks] = useState(false);
   const [uploadingCurated, setUploadingCurated] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
+
+  // Product CRUD states
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [uploadingProductImg, setUploadingProductImg] = useState(false);
+  const [uploadingProductPdf, setUploadingProductPdf] = useState(false);
+  const [uploadingProductVideo, setUploadingProductVideo] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -333,6 +347,17 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
         await updateDoc(doc(db, 'requests', id), { status });
     } catch (err) {
         console.error(err);
+    }
+  };
+
+  const handleDeleteProduct = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this artifact?")) return;
+    try {
+      await deleteDoc(doc(db, 'products', id));
+      alert("Artifact deleted successfully!");
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to delete product: " + err.message);
     }
   };
 
@@ -852,6 +877,472 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
              </div>
           )}
 
+          {activeTab === 'products' && (
+            <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                    <h3 className="text-sm font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">
+                        {editingProduct ? (editingProduct.id ? 'Edit Artifact' : 'New Artifact') : 'Manage Artifacts'}
+                    </h3>
+                    {!editingProduct ? (
+                        <button 
+                            onClick={() => setEditingProduct({
+                                type: 'site',
+                                category: categoriesFromDB[0] || 'Anniversary',
+                                title: '',
+                                desc: '',
+                                price: 'FREE',
+                                original: '₹999',
+                                seed: Math.floor(Math.random() * 1000),
+                                isNew: true,
+                                isBest: false,
+                                whatsInside: ['High-fidelity design font', 'Fully customizable structure', 'Interactive animations'],
+                                imageUrl: '',
+                                pdfUrl: '',
+                                videoUrl: ''
+                            })}
+                            className="bg-white text-black px-4 py-2 rounded-xl text-xs font-mono tracking-widest uppercase font-bold hover:bg-[var(--accent)] hover:text-white transition-colors cursor-pointer"
+                        >
+                            + Create New
+                        </button>
+                    ) : (
+                        <button 
+                            onClick={() => setEditingProduct(null)}
+                            className="text-gray-400 hover:text-white text-xs font-mono tracking-widest uppercase cursor-pointer"
+                        >
+                            ← Back to List
+                        </button>
+                    )}
+                </div>
+
+                {editingProduct ? (
+                    <div className="space-y-5">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Type</label>
+                                <select 
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                                    value={editingProduct.type}
+                                    onChange={e => setEditingProduct({...editingProduct, type: e.target.value})}
+                                >
+                                    <option value="site" className="bg-black text-white">Website (Interactive)</option>
+                                    <option value="pdf" className="bg-black text-white">PDF (Printable)</option>
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Category</label>
+                                <select
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                                    value={editingProduct.category}
+                                    onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}
+                                >
+                                    {categoriesFromDB.map((cat: string) => (
+                                        <option key={cat} value={cat} className="bg-black text-white">{cat}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Title</label>
+                            <input 
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                                value={editingProduct.title}
+                                onChange={e => setEditingProduct({...editingProduct, title: e.target.value})}
+                                placeholder="Netflix Inspired..."
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Description</label>
+                            <textarea 
+                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)] h-24 resize-none"
+                                value={editingProduct.desc}
+                                onChange={e => setEditingProduct({...editingProduct, desc: e.target.value})}
+                                placeholder="Describe the template..."
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Promo Price</label>
+                                <input 
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                                    value={editingProduct.price}
+                                    onChange={e => setEditingProduct({...editingProduct, price: e.target.value})}
+                                    placeholder="FREE"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Strike Price</label>
+                                <input 
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                                    value={editingProduct.original || ''}
+                                    onChange={e => setEditingProduct({...editingProduct, original: e.target.value})}
+                                    placeholder="₹999"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2 col-span-1">
+                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Seed ID</label>
+                                <input 
+                                    type="number"
+                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
+                                    value={editingProduct.seed}
+                                    onChange={e => setEditingProduct({...editingProduct, seed: parseInt(e.target.value) || 0})}
+                                />
+                            </div>
+                            <div className="space-y-2 col-span-1 flex flex-col justify-end pb-3">
+                                <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-gray-400 uppercase">
+                                    <input 
+                                        type="checkbox" 
+                                        className="accent-[var(--accent)]"
+                                        checked={editingProduct.isNew}
+                                        onChange={e => setEditingProduct({...editingProduct, isNew: e.target.checked})}
+                                    />
+                                    Is New
+                                </label>
+                            </div>
+                            <div className="space-y-2 col-span-1 flex flex-col justify-end pb-3">
+                                <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-gray-400 uppercase">
+                                    <input 
+                                        type="checkbox" 
+                                        className="accent-[var(--accent)]"
+                                        checked={editingProduct.isBest}
+                                        onChange={e => setEditingProduct({...editingProduct, isBest: e.target.checked})}
+                                    />
+                                    Is Featured
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Cover Image */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">Cover Image</label>
+                            <div className="flex gap-4 items-center">
+                                <div className="relative w-16 h-20 bg-black border border-white/10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                                    {editingProduct.imageUrl ? (
+                                        <img src={editingProduct.imageUrl} alt="preview" className="w-full h-full object-cover"/>
+                                    ) : (
+                                        <span className="text-[9px] text-gray-600 font-mono text-center px-1">No Image</span>
+                                    )}
+                                    {uploadingProductImg && (
+                                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                                            <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="flex-1">
+                                    <div className="relative">
+                                        <input 
+                                            type="file"
+                                            accept="image/*"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setUploadingProductImg(true);
+                                                    const storageRef = ref(storage, `products/images/${Date.now()}_${file.name}`);
+                                                    uploadBytes(storageRef, file).then(snap => getDownloadURL(snap.ref)).then(url => {
+                                                        setEditingProduct(prev => ({ ...prev, imageUrl: url }));
+                                                    }).catch(err => {
+                                                        console.error(err);
+                                                        alert("Image upload failed");
+                                                    }).finally(() => {
+                                                        setUploadingProductImg(false);
+                                                    });
+                                                }
+                                            }}
+                                        />
+                                        <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-2.5 text-xs font-mono transition-colors text-center cursor-pointer">
+                                            {uploadingProductImg ? 'Uploading cover...' : 'Choose Cover Image'}
+                                        </button>
+                                    </div>
+                                    <p className="text-[9px] text-gray-500 font-mono mt-1">aspect ratio 3:4 (card style)</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* PDF (ONLY FOR PDF) */}
+                        {editingProduct.type === 'pdf' && (
+                            <div className="space-y-2 bg-[#161616]/40 p-4 rounded-xl border border-white/5">
+                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block font-bold text-[var(--accent)]">PDF Document</label>
+                                <div className="space-y-3">
+                                    <input 
+                                        type="text"
+                                        className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[var(--accent)]"
+                                        placeholder="Paste manual Google Docs / PDF url..."
+                                        value={editingProduct.pdfUrl || ''}
+                                        onChange={e => setEditingProduct({...editingProduct, pdfUrl: e.target.value})}
+                                    />
+                                    <div className="relative">
+                                        <input 
+                                            type="file"
+                                            accept="application/pdf"
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                            onChange={e => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    setUploadingProductPdf(true);
+                                                    const storageRef = ref(storage, `products/pdfs/${Date.now()}_${file.name}`);
+                                                    uploadBytes(storageRef, file).then(snap => getDownloadURL(snap.ref)).then(url => {
+                                                        setEditingProduct(prev => ({ ...prev, pdfUrl: url }));
+                                                    }).catch(err => {
+                                                        console.error(err);
+                                                        alert("PDF upload failed");
+                                                    }).finally(() => {
+                                                        setUploadingProductPdf(false);
+                                                    });
+                                                }
+                                            }}
+                                        />
+                                        <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-2.5 text-xs font-mono transition-all text-center flex items-center justify-center gap-2 cursor-pointer">
+                                            {uploadingProductPdf ? (
+                                                <div className="w-3.5 h-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                                            ) : (
+                                                '📤'
+                                            )}
+                                            {uploadingProductPdf ? 'Uploading PDF doc...' : 'Upload PDF Document'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Video (WALKTHROUGH TOUR FOR PRODUCT) */}
+                        <div className="space-y-2 bg-[#161616]/40 p-4 rounded-xl border border-white/5">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block font-bold text-[var(--accent)]">Walkthrough / Demo Video</label>
+                            <div className="space-y-3">
+                                <input 
+                                    type="text"
+                                    className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[var(--accent)]"
+                                    placeholder="Paste YouTube or custom video URL..."
+                                    value={editingProduct.videoUrl || ''}
+                                    onChange={e => setEditingProduct({...editingProduct, videoUrl: e.target.value})}
+                                />
+                                <div className="relative">
+                                    <input 
+                                        type="file"
+                                        accept="video/*"
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                setUploadingProductVideo(true);
+                                                const storageRef = ref(storage, `products/videos/${Date.now()}_${file.name}`);
+                                                uploadBytes(storageRef, file).then(snap => getDownloadURL(snap.ref)).then(url => {
+                                                    setEditingProduct(prev => ({ ...prev, videoUrl: url }));
+                                                }).catch(err => {
+                                                    console.error(err);
+                                                    alert("Video upload failed");
+                                                }).finally(() => {
+                                                    setUploadingProductVideo(false);
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-2.5 text-xs font-mono transition-all text-center flex items-center justify-center gap-2 cursor-pointer">
+                                        {uploadingProductVideo ? (
+                                            <div className="w-3.5 h-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            '🎥'
+                                        )}
+                                        {uploadingProductVideo ? 'Uploading video walkthrough...' : 'Upload Video Walkthrough'}
+                                    </button>
+                                </div>
+                                {editingProduct.videoUrl && (
+                                    <div className="mt-2 p-2 bg-black/40 border border-white/5 rounded text-[11px] text-gray-400 flex items-center justify-between">
+                                        <span className="truncate flex-1 pr-4">{editingProduct.videoUrl}</span>
+                                        <button 
+                                            onClick={() => setEditingProduct({...editingProduct, videoUrl: ''})}
+                                            className="text-red-500 hover:text-red-400 px-2 py-0.5 font-bold cursor-pointer"
+                                        >
+                                            Delete Video
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* What's Inside */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">What's Inside Features</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white text-xs outline-none focus:border-[var(--accent)]"
+                                    placeholder="Add bullet point, e.g. Fully responsive code"
+                                    id="new-bullet-input"
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            const input = e.currentTarget;
+                                            const newBullet = input.value.trim();
+                                            if (newBullet && editingProduct.whatsInside) {
+                                                setEditingProduct({
+                                                    ...editingProduct,
+                                                    whatsInside: [...editingProduct.whatsInside, newBullet]
+                                                });
+                                                input.value = '';
+                                            }
+                                        }
+                                    }}
+                                />
+                                <button
+                                    onClick={() => {
+                                        const input = document.getElementById('new-bullet-input') as HTMLInputElement;
+                                        const newBullet = input?.value.trim();
+                                        if (newBullet && editingProduct.whatsInside) {
+                                            setEditingProduct({
+                                                ...editingProduct,
+                                                whatsInside: [...editingProduct.whatsInside, newBullet]
+                                            });
+                                            input.value = '';
+                                        }
+                                    }}
+                                    className="bg-white/5 border border-white/10 hover:border-[var(--accent)] px-4 rounded-lg text-white font-mono text-xs font-bold cursor-pointer"
+                                >
+                                    Add
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2 pt-2">
+                                {editingProduct.whatsInside && editingProduct.whatsInside.map((item: string, idx: number) => (
+                                    <div key={idx} className="bg-white/40 text-white text-[11px] px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
+                                        <span>{item}</span>
+                                        <button 
+                                            onClick={() => {
+                                                const list = [...editingProduct.whatsInside];
+                                                list.splice(idx, 1);
+                                                setEditingProduct({...editingProduct, whatsInside: list});
+                                            }}
+                                            className="text-red-500 hover:text-red-400 font-bold"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Save Actions */}
+                        <div className="flex gap-3 pt-4 border-t border-white/5">
+                            <button 
+                                onClick={() => setEditingProduct(null)}
+                                className="flex-1 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white py-3 rounded-xl text-xs font-mono tracking-widest uppercase cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    if (!editingProduct.title || !editingProduct.desc) {
+                                        alert("Title and Description are required");
+                                        return;
+                                    }
+                                    setIsSavingProduct(true);
+                                    try {
+                                        const payload = {
+                                            type: editingProduct.type,
+                                            category: editingProduct.category,
+                                            title: editingProduct.title,
+                                            desc: editingProduct.desc,
+                                            price: editingProduct.price || 'FREE',
+                                            original: editingProduct.original || '₹999',
+                                            seed: editingProduct.seed || Math.floor(Math.random() * 1000),
+                                            isNew: !!editingProduct.isNew,
+                                            isBest: !!editingProduct.isBest,
+                                            imageUrl: editingProduct.imageUrl || '',
+                                            whatsInside: editingProduct.whatsInside || [],
+                                            updatedAt: serverTimestamp()
+                                        } as any;
+
+                                        payload.pdfUrl = editingProduct.pdfUrl || '';
+                                        payload.videoUrl = editingProduct.videoUrl || '';
+
+                                        if (editingProduct.id) {
+                                            await updateDoc(doc(db, 'products', editingProduct.id), payload);
+                                            alert("Artifact updated successfully!");
+                                        } else {
+                                            payload.createdAt = serverTimestamp();
+                                            await addDoc(collection(db, 'products'), payload);
+                                            alert("New artifact created successfully!");
+                                        }
+                                        setEditingProduct(null);
+                                    } catch (err: any) {
+                                        console.error(err);
+                                        alert("Failed to save product: " + err.message);
+                                    } finally {
+                                        setIsSavingProduct(false);
+                                    }
+                                }}
+                                disabled={isSavingProduct || uploadingProductImg || uploadingProductPdf || uploadingProductVideo}
+                                className="flex-1 bg-[var(--accent)] hover:brightness-110 text-white py-3 rounded-xl text-xs font-mono tracking-widest font-black uppercase flex items-center justify-center gap-2 cursor-pointer"
+                            >
+                                {isSavingProduct ? (
+                                    <div className="w-4 h-4 border-2 border-white/25 border-t-white rounded-full animate-spin" />
+                                ) : (
+                                    'Save Artifact'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    /* PRODUCTS LIST */
+                    <div className="space-y-4">
+                        {products && products.length === 0 ? (
+                            <div className="p-12 text-center text-gray-600 text-xs font-mono uppercase tracking-widest border border-dashed border-white/10 rounded-2xl">
+                                No artifacts standardly loaded
+                            </div>
+                        ) : (
+                            products && products.map((product: any) => (
+                                <div key={product.id} className="p-4 bg-white/5 border border-white/10 rounded-2xl flex gap-4 items-center group">
+                                    <div className="w-12 h-16 rounded overflow-hidden shrink-0 border border-white/10 bg-black flex items-center justify-center relative">
+                                        {product.imageUrl ? (
+                                            <img src={product.imageUrl} alt={product.title} className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-[10px] text-gray-700 font-mono">Cover</span>
+                                        )}
+                                        <div className={`absolute top-0.5 left-0.5 px-1 py-[1px] text-[7px] font-mono font-bold rounded ${
+                                            product.type === 'pdf' ? 'bg-[#FFD60A] text-black' : 'bg-[#FF3B3B] text-white'
+                                        }`}>
+                                            {product.type.toUpperCase()}
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="text-white text-xs font-bold truncate group-hover:text-[var(--accent)] transition-colors">{product.title}</h4>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <span className="text-[9px] font-mono text-[#FF3B3B] uppercase">{product.category}</span>
+                                            <span className="text-gray-600 text-[9px] font-mono">•</span>
+                                            <span className="text-[9px] font-mono text-gray-500">{product.price} ({product.original || '₹999'})</span>
+                                        </div>
+                                        {product.type === 'site' && (
+                                            <div className="text-[8px] font-mono text-gray-400 mt-1 truncate">
+                                                {product.videoUrl ? `🎥 Walkthrough Video set` : `⚠️ No Walkthrough Video`}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <button 
+                                            onClick={() => setEditingProduct({ ...product })}
+                                            className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
+                                            title="Edit Artifact"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button 
+                                            onClick={() => handleDeleteProduct(product.id)}
+                                            className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-all cursor-pointer"
+                                            title="Delete Artifact"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+            </div>
+          )}
+
           {activeTab === 'leads' && (
             <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
                 <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Incoming Requests</h3>
@@ -927,9 +1418,51 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
   );
 };
 
+const VideoPlayer = ({ url }: { url: string }) => {
+  if (!url) return null;
+  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+  if (isYouTube) {
+    let embedUrl = url;
+    if (url.includes('youtu.be/')) {
+        const id = url.split('youtu.be/')[1]?.split('?')[0];
+        embedUrl = `https://www.youtube.com/embed/${id}?autoplay=1`;
+    } else if (url.includes('v=')) {
+        const id = url.split('v=')[1]?.split('&')[0];
+        embedUrl = `https://www.youtube.com/embed/${id}?autoplay=1`;
+    } else if (url.includes('embed/')) {
+        embedUrl = url;
+    }
+    return (
+      <div className="w-full h-[320px] md:h-[480px] bg-black rounded-lg overflow-hidden shadow-2xl relative">
+        <iframe 
+          src={embedUrl}
+          className="w-full h-full border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          title="Video Walkthrough"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full bg-black rounded-lg overflow-hidden shadow-2xl relative">
+      <video 
+        src={url}
+        controls
+        autoPlay
+        playsInline
+        className="w-full h-full max-h-[600px] object-contain"
+      />
+    </div>
+  );
+};
+
 const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => void }> = ({ product, onClose, onSave }) => {
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const isNetflix = product.type === 'site' && product.title.toLowerCase().includes('netflix');
+  const [activeMediaTab, setActiveMediaTab] = useState<'preview' | 'video'>(
+    product.type === 'pdf' && product.pdfUrl ? 'preview' : 'video'
+  );
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -942,46 +1475,6 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
       document.body.style.overflow = '';
     };
   }, [onClose]);
-
-  if (isPreviewMode && product.type === 'site') {
-    return (
-      <div className="fixed inset-0 z-[350] bg-black flex flex-col animate-[modalEnter_0.4s_ease-out]">
-        <div className="h-14 bg-[#111] border-b border-white/10 flex items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <span className="text-white font-semibold">{product.title}</span>
-            <div className="bg-[#FF3B3B] text-white text-[10px] font-mono px-2 py-0.5 rounded uppercase">Live Preview</div>
-          </div>
-          <div className="flex items-center gap-4">
-            <button className="text-gray-400 hover:text-white" onClick={() => setIsPreviewMode(false)}>Exit Preview</button>
-            <button onClick={onClose} className="bg-[#FF3B3B] text-white px-4 py-1.5 rounded text-sm font-bold">Close Artifact</button>
-          </div>
-        </div>
-        <div className="flex-1 bg-black relative">
-           {isNetflix && <div className="absolute top-8 left-8 z-10 font-black text-[#E50914] text-3xl tracking-tighter italic">NETFLIX</div>}
-           <div className="flex flex-col items-center justify-center h-full">
-              {isNetflix ? (
-                <>
-                  <h3 className="text-white font-light text-5xl mb-12">Who's watching?</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-                    {["1 Month", "2 Months", "3 Months", "5 Months"].map((l: string, i: number) => (
-                      <div key={i} className="flex flex-col items-center gap-4">
-                        <div className="w-32 h-32 md:w-44 md:h-44 rounded bg-blue-600 hover:ring-4 ring-white transition-all cursor-pointer"></div>
-                        <span className="text-gray-400 text-lg uppercase tracking-widest">{l}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <div className="text-center">
-                    <p className="text-white text-2xl font-display italic">Live Preview Active</p>
-                    <p className="text-gray-500 mt-4 max-w-sm mx-auto">This is a dynamic placeholder for your custom website template.</p>
-                </div>
-              )}
-           </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div 
@@ -1004,21 +1497,106 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
         {/* Preview Area */}
         <div className="w-full md:flex-1 min-h-[300px] md:min-h-0 overflow-y-visible md:overflow-y-auto no-scrollbar bg-[#0A0A0A] p-4 md:p-12 order-1 md:order-1">
           <div className="max-w-3xl mx-auto space-y-8 md:space-y-12">
-            {product.type === 'pdf' && product.pdfUrl ? (
-              <div className="flex flex-col gap-4">
-                    <div 
-                    className="w-full h-[500px] md:h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative select-none"
-                    onContextMenu={(e) => e.preventDefault()}
-                >
-                  <iframe 
-                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(product.pdfUrl)}&embedded=true`}
-                    className="w-full h-full border-0"
-                    title="PDF Preview"
-                  />
-                  <div className="absolute bottom-2 left-2 text-[8px] text-gray-500 opacity-50 z-20 pointer-events-none">
-                    Preview only. Unauthorized reproduction prohibited.
+            {product.type === 'pdf' ? (
+              <div className="space-y-6">
+                {product.pdfUrl && product.videoUrl && (
+                  <div className="flex justify-center border-b border-white/5 pb-4 gap-2">
+                    <button 
+                      onClick={() => setActiveMediaTab('preview')}
+                      className={`px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                        activeMediaTab === 'preview' 
+                          ? 'bg-white text-black font-black' 
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      📄 Interactive Document
+                    </button>
+                    <button 
+                      onClick={() => setActiveMediaTab('video')}
+                      className={`px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
+                        activeMediaTab === 'video' 
+                          ? 'bg-white text-black font-black' 
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      🎥 Video Walkthrough Tour
+                    </button>
                   </div>
-                </div>
+                )}
+
+                {activeMediaTab === 'preview' && product.pdfUrl ? (
+                  <div className="flex flex-col gap-4">
+                    <div 
+                        className="w-full h-[500px] md:h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative select-none"
+                        onContextMenu={(e) => e.preventDefault()}
+                    >
+                      <iframe 
+                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(product.pdfUrl)}&embedded=true`}
+                        className="w-full h-full border-0"
+                        title="PDF Preview"
+                      />
+                      <div className="absolute bottom-2 left-2 text-[8px] text-gray-500 opacity-50 z-20 pointer-events-none">
+                        Preview only. Unauthorized reproduction prohibited.
+                      </div>
+                    </div>
+                  </div>
+                ) : product.videoUrl ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                       <span className="text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest font-black flex items-center gap-2">
+                         🎥 Walkthrough Video Playback
+                       </span>
+                    </div>
+                    <VideoPlayer url={product.videoUrl} />
+                  </div>
+                ) : (
+                  <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                    {product.imageUrl ? (
+                      <img 
+                        src={product.imageUrl} 
+                        className="w-full rounded-lg shadow-[0_45px_90px_rgba(0,0,0,0.8)]"
+                        alt={product.title}
+                      />
+                    ) : (
+                      <div className="w-full aspect-[3/4] bg-[#111] rounded-lg animate-pulse flex items-center justify-center text-gray-700 font-mono text-xs uppercase">No Image Artifact</div>
+                    )}
+                    <div className="bg-[#161616] p-8 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center">
+                      <span className="text-4xl mb-4">🎥</span>
+                      <h3 className="text-white text-lg font-bold mb-2">Video Walkthrough Coming Soon</h3>
+                      <p className="text-gray-500 text-sm max-w-md">Our walkthrough showcase or demo walkthrough video for this website template is currently being curated. Enjoy the details!</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : product.type === 'site' ? (
+              <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                {product.videoUrl ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                       <span className="text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest font-black flex items-center gap-2">
+                         🎥 Walkthrough Video Playback
+                       </span>
+                    </div>
+                    <VideoPlayer url={product.videoUrl} />
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {product.imageUrl ? (
+                      <img 
+                        src={product.imageUrl} 
+                        className="w-full rounded-lg shadow-[0_45px_90px_rgba(0,0,0,0.8)]"
+                        alt={product.title}
+                      />
+                    ) : (
+                      <div className="w-full aspect-[3/4] bg-[#111] rounded-lg animate-pulse flex items-center justify-center text-gray-700 font-mono text-xs uppercase">No Image Artifact</div>
+                    )}
+                    <div className="bg-[#161616] p-8 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center">
+                      <span className="text-4xl mb-4">🎥</span>
+                      <h3 className="text-white text-lg font-bold mb-2">Video Walkthrough Coming Soon</h3>
+                      <p className="text-gray-500 text-sm max-w-md">Our walkthrough showcase or demo walkthrough video for this website template is currently being curated. Enjoy the details!</p>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : product.imageUrl ? (
               <img 
@@ -1028,20 +1606,6 @@ const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => 
               />
             ) : (
                 <div className="w-full aspect-[3/4] bg-[#111] rounded-lg animate-pulse flex items-center justify-center text-gray-700 font-mono text-xs uppercase">No Image Artifact</div>
-            )}
-
-            {product.type === 'site' && (
-                <div className="bg-[#161616] h-[400px] rounded-lg border border-white/5 flex flex-col items-center justify-center text-center p-8">
-                    <span className="text-4xl mb-4">🖥️</span>
-                    <h3 className="text-white text-xl font-bold mb-4">Experience the Full Site</h3>
-                    <p className="text-gray-500 mb-8 max-w-md">Try the interactive anniversary experience with full scroll animations, profile picks, and dynamic story moments.</p>
-                    <button 
-                        onClick={() => setIsPreviewMode(true)}
-                        className="bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-[#FF3B3B] hover:text-white transition-all"
-                    >
-                        Launch Live Preview
-                    </button>
-                </div>
             )}
           </div>
         </div>
@@ -1110,9 +1674,9 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
       ref={observe}
       className="group bg-[#111] border border-[#1E1E1E] rounded-xl overflow-hidden transition-all duration-300 hover:border-[#2A2A2A] hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)] transform hover:-translate-y-1 flex flex-col h-full"
     >
-      <div className={`relative overflow-hidden cursor-pointer ${product.type === 'pdf' ? 'aspect-[3/4]' : 'aspect-video'}`} onClick={() => onPreview(product)}>
+      <div className="relative overflow-hidden cursor-pointer aspect-[3/4]" onClick={() => onPreview(product)}>
         <img 
-          src={product.imageUrl || `https://picsum.photos/${product.type === 'pdf' ? '600/800' : '800/450'}?random=${product.seed}`} 
+          src={product.imageUrl || `https://picsum.photos/600/800?random=${product.seed}`} 
           alt={product.title}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
         />
@@ -1167,30 +1731,22 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
             onClick={(e) => { e.stopPropagation(); onSave(product); }}
             className="w-full bg-[#181818] border border-white/5 hover:border-[#FF3B3B] text-white hover:bg-[#FF3B3B] py-3.5 rounded-xl text-xs font-mono font-bold tracking-wider active:scale-[0.98] transition-all duration-200 mb-4 flex items-center justify-center gap-2 cursor-pointer"
         >
-            {product.type === 'site' && product.title.toLowerCase().includes('netflix') 
-              ? 'GET ACCESS +' 
-              : 'SAVE TO LIBRARY +'}
+            SAVE TO LIBRARY +
         </button>
         
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
           <div className="flex flex-col">
-            {!(product.type === 'site' && product.title.toLowerCase().includes('netflix')) ? (
-                <>
-                    <span className="text-[#444] text-[10px] font-mono uppercase tracking-widest line-through mb-1">{product.original || '₹999'}</span>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-white font-mono font-black text-2xl tracking-tighter">FREE</span>
-                        <span className="text-[var(--accent)] text-[8px] font-bold uppercase tracking-widest">BETA</span>
-                    </div>
-                </>
-            ) : (
-                <span className="text-[var(--accent)] text-[10px] font-mono uppercase tracking-[0.2em] font-bold">Limited Beta Access</span>
-            )}
+            <span className="text-[#444] text-[10px] font-mono uppercase tracking-widest line-through mb-1">{product.original || '₹999'}</span>
+            <div className="flex items-baseline gap-1">
+                <span className="text-white font-mono font-black text-2xl tracking-tighter">FREE</span>
+                <span className="text-[var(--accent)] text-[8px] font-bold uppercase tracking-widest">BETA</span>
+            </div>
           </div>
           <button 
             onClick={() => onPreview(product)}
-            className="bg-transparent border border-white/10 text-white hover:bg-white hover:text-black px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 group/btn"
+            className="bg-transparent border border-white/10 text-white hover:bg-white hover:text-black px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 group/btn cursor-pointer"
           >
-            Preview <span className="transform group-hover/btn:translate-x-1 transition-transform">→</span>
+            {product.type === 'site' ? 'Watch Video 🎥' : 'Preview →'}
           </button>
         </div>
       </div>
@@ -1643,7 +2199,7 @@ export default function App() {
       </section>
 
       {/* Netflix Experience Showcase */}
-      <section id="netflix-sites" ref={observe} className="py-24 md:py-32 px-6 md:px-12 section-dark grain relative overflow-hidden">
+      <section id="netflix-sites" ref={observe} className="py-16 md:py-20 pb-12 px-6 md:px-12 section-dark grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_100%_0%,rgba(var(--accent-rgb),0.1),transparent)] pointer-events-none"></div>
         
         <div className="max-w-7xl mx-auto">
@@ -1763,7 +2319,7 @@ export default function App() {
     </section>
 
       {/* How It Works - Light alternate */}
-      <section id="about" ref={observe} className="py-24 md:py-40 section-light border-y border-gray-100">
+      <section id="about" ref={observe} className="py-16 md:py-24 section-light border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
                 <div>
@@ -2031,6 +2587,8 @@ export default function App() {
         onClose={() => setAdminPanelOpen(false)} 
         data={adminData} 
         onUpdate={setAdminData} 
+        products={products}
+        categoriesFromDB={categoriesFromDB}
       />
 
       {/* Purchase Modal */}

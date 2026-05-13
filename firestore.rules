@@ -71,7 +71,7 @@ service cloud.firestore {
       allow create: if isAdmin() && isValidProduct(incoming()) && incoming().createdAt == request.time;
       allow update: if isAdmin() && isValidProduct(incoming()) && 
                     incoming().createdAt == existing().createdAt &&
-                    incoming().diff(existing()).affectedKeys().hasOnly(['type', 'category', 'title', 'desc', 'price', 'original', 'seed', 'isNew', 'isBest', 'pdfUrl', 'imageUrl', 'updatedAt', 'whatsInside']);
+                    incoming().diff(existing()).affectedKeys().hasOnly(['type', 'category', 'title', 'desc', 'price', 'original', 'seed', 'isNew', 'isBest', 'pdfUrl', 'videoUrl', 'imageUrl', 'updatedAt', 'whatsInside']);
       allow delete: if isAdmin();
     }
 

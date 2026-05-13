@@ -17,6 +17,7 @@
         "isBest": { "type": "boolean" },
         "whatsInside": { "type": "array", "items": { "type": "string" } },
         "pdfUrl": { "type": "string" },
+        "videoUrl": { "type": "string" },
         "imageUrl": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
