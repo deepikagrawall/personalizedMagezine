@@ -4,12 +4,28 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion } from 'motion/react';
+import { motion, useScroll, useTransform } from 'motion/react';
 import { Link } from 'react-router-dom';
+import { MessageCircle, Film, Play, Layout, Zap, Package, Layers } from 'lucide-react';
 import { db, storage, auth } from './lib/firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+
+const FeatureIcon = ({emoji, className}: {emoji: string, className?: string}) => {
+    switch(emoji) {
+        case '🎥': return <Film className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '🎬': return <Film className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '🚀': return <Zap className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '🎨': return <Layout className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '⚡': return <Play className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '🎞️': return <Film className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '📼': return <Package className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '🔍': return <Layers className={`text-[var(--accent)] ${className}`} size={24} />;
+        case '📱': return <Layout className={`text-[var(--accent)] ${className}`} size={24} />;
+        default: return <span className="text-2xl">{emoji}</span>;
+    }
+};
 
 // --- DATA ---
 
@@ -79,142 +95,162 @@ const PurchaseModal = ({ product, isOpen, onClose }: { product: any, isOpen: boo
 
   return (
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-[fadeIn_0.3s_ease-out]">
-      <div className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full max-w-[560px] p-6 sm:p-8 md:p-12 overflow-y-auto max-h-[95vh] no-scrollbar">
-        <button onClick={onClose} className="absolute top-6 right-6 text-gray-500 hover:text-white transition-colors">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+      <div className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full md:w-[60vw] max-w-4xl p-5 sm:p-6 md:p-8 overflow-y-auto max-h-[85vh] no-scrollbar">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-20">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
 
         {step === 'form' ? (
-          <div>
-            <span className="font-mono text-[11px] text-[var(--accent)] tracking-widest font-bold mb-3 block uppercase">✦ ONE-TIME PURCHASE</span>
-            <h2 className="font-display text-2xl md:text-3xl text-white font-bold mb-2">Get {product.title}</h2>
-            <p className="text-gray-500 text-sm mb-6 md:mb-8">Fill in your details and we'll deliver your template instantly.</p>
-            
-            <div className="flex items-center gap-4 mb-4">
-               <span className="text-3xl font-bold text-white">{product.price}</span>
-               {product.original && <span className="text-gray-600 line-through text-sm">{product.original}</span>}
-            </div>
-            <div className="space-y-2 mb-6 md:mb-8">
-               <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Instant delivery</p>
-               <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Full source code</p>
-               <p className="text-[11px] text-gray-600 flex items-center gap-2">✓ Setup guide included</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[13px] text-gray-400">Full Name *</label>
-                  <input 
-                    className={`w-full bg-[#0A0A0A] border ${errors.name ? 'border-[var(--accent)]' : 'border-[#2A2A2A]'} rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all`}
-                    placeholder="Your name"
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                  />
-                  {errors.name && <p className="text-[var(--accent)] text-[10px] uppercase font-bold">{errors.name}</p>}
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[13px] text-gray-400">Email Address *</label>
-                  <input 
-                    className={`w-full bg-[#0A0A0A] border ${errors.email ? 'border-[var(--accent)]' : 'border-[#2A2A2A]'} rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all`}
-                    placeholder="your@email.com"
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                  />
-                  {errors.email && <p className="text-[var(--accent)] text-[10px] uppercase font-bold">{errors.email}</p>}
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start w-full">
+            {/* Left Column: Product Details */}
+            <div className="md:col-span-5 space-y-4 md:border-r md:border-[#222] md:pr-6 md:mr-2">
+              <div>
+                <span className="font-mono text-[10px] text-[var(--accent)] tracking-widest font-bold mb-1.5 block uppercase">✦ ONE-TIME ACCESS</span>
+                <h2 className="font-display text-xl md:text-2xl text-white font-bold leading-tight">Get {product.title}</h2>
+                <p className="text-gray-400 text-xs mt-1 leading-relaxed">Fill in your details, and we will personalize your digital package immediately.</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-[13px] text-gray-400">Phone Number</label>
-                  <input 
-                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="+91 XXXXX XXXXX"
-                    value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[13px] text-gray-400">Occasion Type</label>
-                  <select 
-                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all appearance-none"
-                    value={formData.occasion}
-                    onChange={e => setFormData({...formData, occasion: e.target.value})}
-                  >
-                    {['Anniversary', 'Birthday', 'Proposal', 'Couple', 'Memorial', 'Friendship', 'Other'].map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="flex items-baseline gap-2 py-2 border-y border-[#202020]">
+                <span className="text-3xl font-black font-mono text-white">{product.price}</span>
+                {product.original && <span className="text-gray-600 line-through text-xs font-mono">{product.original}</span>}
               </div>
 
-              {product.title.toLowerCase().includes('netflix') || product.category.toLowerCase().includes('anniversary') ? (
-                <div className="space-y-1.5">
-                  <label className="text-[13px] text-gray-400">Couple Names (Optional)</label>
-                  <input 
-                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="e.g. Priya & Karan"
-                    value={formData.coupleNames}
-                    onChange={e => setFormData({...formData, coupleNames: e.target.value})}
-                  />
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-gray-400">Included Core Features:</span>
+                <div className="space-y-1">
+                  <p className="text-gray-400 text-[11px] flex items-center gap-2">
+                    <span className="text-[var(--accent)] font-bold">✓</span> Personalized Content Update
+                  </p>
+                  <p className="text-gray-400 text-[11px] flex items-center gap-2">
+                    <span className="text-[var(--accent)] font-bold">✓</span> Optimized Deliverables
+                  </p>
+                  <p className="text-gray-400 text-[11px] flex items-center gap-2">
+                    <span className="text-[var(--accent)] font-bold">✓</span> Setup Guide & Live Assistance
+                  </p>
                 </div>
-              ) : (
-                 <div className="space-y-1.5">
-                    <label className="text-[13px] text-gray-400">Preferred File Format</label>
+              </div>
+            </div>
+
+            {/* Right Column: Compact Form */}
+            <div className="md:col-span-7">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Full Name *</label>
+                    <input 
+                      className={`w-full bg-[#0A0A0A] border ${errors.name ? 'border-[var(--accent)]' : 'border-[#222]'} rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all`}
+                      placeholder="Your name"
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                    />
+                    {errors.name && <p className="text-[var(--accent)] text-[9px] uppercase font-bold">{errors.name}</p>}
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Email Address *</label>
+                    <input 
+                      className={`w-full bg-[#0A0A0A] border ${errors.email ? 'border-[var(--accent)]' : 'border-[#222]'} rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all`}
+                      placeholder="your@email.com"
+                      type="email"
+                      value={formData.email}
+                      onChange={e => setFormData({...formData, email: e.target.value})}
+                    />
+                    {errors.email && <p className="text-[var(--accent)] text-[9px] uppercase font-bold">{errors.email}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Phone Number</label>
+                    <input 
+                      className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all"
+                      placeholder="+91 XXXXX XXXXX"
+                      value={formData.phone}
+                      onChange={e => setFormData({...formData, phone: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Occasion Type</label>
                     <select 
-                        className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all appearance-none"
+                      className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all appearance-none"
+                      value={formData.occasion}
+                      onChange={e => setFormData({...formData, occasion: e.target.value})}
+                    >
+                      {['Anniversary', 'Birthday', 'Proposal', 'Couple', 'Memorial', 'Friendship', 'Other'].map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {product.title.toLowerCase().includes('netflix') || product.category.toLowerCase().includes('anniversary') ? (
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Couple Names (Optional)</label>
+                      <input 
+                        className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all"
+                        placeholder="e.g. Priya & Karan"
+                        value={formData.coupleNames}
+                        onChange={e => setFormData({...formData, coupleNames: e.target.value})}
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Preferred File Format</label>
+                      <select 
+                        className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all appearance-none"
                         value={formData.format}
                         onChange={e => setFormData({...formData, format: e.target.value})}
-                    >
+                      >
                         <option value="PDF">PDF</option>
                         <option value="PNG">PNG</option>
                         <option value="Both">Both</option>
+                      </select>
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">How did you hear?</label>
+                    <select 
+                      className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all appearance-none"
+                      value={formData.referral}
+                      onChange={e => setFormData({...formData, referral: e.target.value})}
+                    >
+                      {['Instagram', "Friend's Recommendation", 'Google', 'Other'].map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
+                  </div>
                 </div>
-              )}
 
-              <div className="space-y-1.5">
-                <label className="text-[13px] text-gray-400">Special Message (Optional)</label>
-                <textarea 
-                  className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all h-24 resize-none"
-                  placeholder="Any customization notes or special requests..."
-                  value={formData.message}
-                  onChange={e => setFormData({...formData, message: e.target.value})}
-                />
-              </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Special Message (Optional)</label>
+                  <textarea 
+                    className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all h-20 resize-none"
+                    placeholder="Any customization notes or special requests..."
+                    value={formData.message}
+                    onChange={e => setFormData({...formData, message: e.target.value})}
+                  />
+                </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[13px] text-gray-400">How did you hear about us?</label>
-                <select 
-                    className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3.5 text-white outline-none focus:border-[var(--accent)] transition-all appearance-none"
-                    value={formData.referral}
-                    onChange={e => setFormData({...formData, referral: e.target.value})}
+                <button 
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-[var(--accent)] text-white py-3 rounded-lg font-bold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center text-sm tracking-wide mt-2 shadow-lg"
                 >
-                    {['Instagram', "Friend's Recommendation", 'Google', 'Other'].map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
-                    ))}
-                </select>
-              </div>
-
-              <button 
-                type="submit"
-                disabled={loading}
-                className="w-full bg-[var(--accent)] text-white py-4 rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center"
-              >
-                {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Complete Purchase →"}
-              </button>
-            </form>
+                  {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Complete Purchase →"}
+                </button>
+              </form>
+            </div>
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 bg-[var(--accent)] rounded-full flex items-center justify-center mx-auto mb-8 animate-[scaleIn_0.5s_ease-out]">
-               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+          <div className="text-center py-10 w-full max-w-md mx-auto">
+            <div className="w-16 h-16 bg-[var(--accent)] rounded-full flex items-center justify-center mx-auto mb-6 animate-[scaleIn_0.5s_ease-out]">
+               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
             </div>
-            <h2 className="font-display text-3xl text-white font-bold mb-4">Order Received!</h2>
-            <p className="text-gray-400 mb-2">Check your email at <span className="text-white font-bold">{formData.email}</span> for download link and setup guide.</p>
-            <p className="text-gray-600 text-xs mb-10">We typically respond within 2 hours.</p>
-            <button onClick={onClose} className="text-gray-400 hover:text-white font-bold">← Browse More Templates</button>
+            <h2 className="font-display text-2xl text-white font-bold mb-3 font-semibold">Order Received!</h2>
+            <p className="text-gray-400 text-sm mb-1">Check your email at <span className="text-white font-bold">{formData.email}</span></p>
+            <p className="text-gray-500 text-xs mb-8 leading-relaxed">We will deliver your download package & setup guide within 2 hours.</p>
+            <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-sm transition-colors border-b border-gray-600 hover:border-white pb-0.5">← Browse More Templates</button>
           </div>
         )}
       </div>
@@ -248,10 +284,12 @@ function useIntersectionObserver() {
 
 // --- ADMIN SIDE PANEL ---
 const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, onClose: () => void, data: any, onUpdate: (newData: any) => void }) => {
-  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads'>('netflix');
+  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads' | 'howItWorks' | 'curatedSelection'>('netflix');
   const [localData, setLocalData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
   const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
+  const [uploadingHowItWorks, setUploadingHowItWorks] = useState(false);
+  const [uploadingCurated, setUploadingCurated] = useState(false);
   const [leads, setLeads] = useState<any[]>([]);
 
   useEffect(() => {
@@ -295,6 +333,52 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
         await updateDoc(doc(db, 'requests', id), { status });
     } catch (err) {
         console.error(err);
+    }
+  };
+
+  const uploadHowItWorksImage = async (file: File) => {
+    setUploadingHowItWorks(true);
+    try {
+      const storageRef = ref(storage, `howitworks/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      setLocalData({
+        ...localData,
+        howItWorks: {
+          ...localData.howItWorks,
+          imageUrl: downloadURL
+        }
+      });
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('Upload failed. Try again.');
+    } finally {
+      setUploadingHowItWorks(false);
+    }
+  };
+
+  const uploadCuratedImage = async (file: File) => {
+    setUploadingCurated(true);
+    try {
+      const storageRef = ref(storage, `curated/${Date.now()}_${file.name}`);
+      const snapshot = await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      setLocalData({
+        ...localData,
+        curatedSelection: {
+          ...(localData.curatedSelection || {
+            subtitle: '✦ The Library',
+            title: 'Curated \n Selection.',
+            description: 'Every design is an original piece, crafted with premium typography and editorial layouts.'
+          }),
+          imageUrl: downloadURL
+        }
+      });
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('Upload failed. Try again.');
+    } finally {
+      setUploadingCurated(false);
     }
   };
 
@@ -360,6 +444,7 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
             { id: 'netflix', label: 'Netflix Block' },
             { id: 'settings', label: 'Hero & Identity' },
             { id: 'howItWorks', label: 'How It Works' },
+            { id: 'curatedSelection', label: 'Curated Selection' },
             { id: 'products', label: 'Artifacts' },
             { id: 'leads', label: 'User Leads' }
           ].map(tab => (
@@ -379,7 +464,7 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
           {activeTab === 'howItWorks' && (
             <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
                 <div className="space-y-4">
-                     <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Section Content</h3>
+                     <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">How It Works Layout</h3>
                      <div className="space-y-2">
                           <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Title (use \n for newline)</label>
                           <textarea 
@@ -389,21 +474,54 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
                           />
                      </div>
                      <div className="space-y-2">
-                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Image URL</label>
-                        <input
-                            className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
-                            value={localData.howItWorks.imageUrl}
-                            onChange={e => setLocalData({...localData, howItWorks: {...localData.howItWorks, imageUrl: e.target.value}})}
-                        />
-                        <img src={localData.howItWorks.imageUrl} alt="preview" className="w-20 h-20 object-cover rounded mt-2"/>
-                    </div>
+                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Subtitle</label>
+                          <input 
+                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
+                              value={localData.howItWorks.subtitle}
+                              onChange={e => setLocalData({...localData, howItWorks: {...localData.howItWorks, subtitle: e.target.value}})}
+                          />
+                     </div>
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Image</label>
+                        <div className="flex gap-4 items-center">
+                            <div className="relative w-20 h-20 bg-black border border-white/10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                               {localData.howItWorks.imageUrl ? (
+                                   <img src={localData.howItWorks.imageUrl} alt="preview" className="w-full h-full object-cover"/>
+                               ) : (
+                                   <span className="text-[10px] text-gray-600 font-mono">No Image</span>
+                               )}
+                               {uploadingHowItWorks && (
+                                   <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                                       <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                                   </div>
+                               )}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <div className="relative">
+                                    <input 
+                                        type="file"
+                                        accept="image/*"
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            if (file) uploadHowItWorksImage(file);
+                                        }}
+                                    />
+                                    <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-3 text-xs font-mono transition-colors text-center">
+                                        {uploadingHowItWorks ? 'Uploading...' : 'Choose Image File'}
+                                    </button>
+                                </div>
+                                <p className="text-[9px] text-gray-500 font-mono">Recommended aspect ratio: 4:5</p>
+                            </div>
+                        </div>
+                     </div>
                 </div>
 
                 <div className="space-y-4">
                     <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Steps</h3>
                     {localData.howItWorks.steps.map((step: any, idx: number) => (
                         <div key={idx} className="p-4 bg-white/5 rounded-xl border border-white/5 flex gap-4">
-                            <span className="text-xl shrink-0 font-bold text-gray-500">{step.num}</span>
+                            <span className="text-xl shrink-0 font-bold text-gray-400">{step.num}</span>
                             <div className="flex-1 space-y-2">
                                 <input 
                                     className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-xs font-bold"
@@ -428,6 +546,76 @@ const AdminSidePanel = ({ isOpen, onClose, data, onUpdate }: { isOpen: boolean, 
                             </div>
                         </div>
                     ))}
+                </div>
+            </div>
+          )}
+
+          {activeTab === 'curatedSelection' && (
+            <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
+                <div className="space-y-4">
+                     <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Curated Selection Layout</h3>
+                     
+                     <div className="space-y-2">
+                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Overline</label>
+                          <input 
+                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
+                              value={localData.curatedSelection?.subtitle || ''}
+                              onChange={e => setLocalData({...localData, curatedSelection: {...(localData.curatedSelection || {}), subtitle: e.target.value}})}
+                          />
+                     </div>
+
+                     <div className="space-y-2">
+                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Title (use \n for newline)</label>
+                          <textarea 
+                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none h-20 resize-none"
+                              value={localData.curatedSelection?.title || ''}
+                              onChange={e => setLocalData({...localData, curatedSelection: {...(localData.curatedSelection || {}), title: e.target.value}})}
+                          />
+                     </div>
+
+                     <div className="space-y-2">
+                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Description</label>
+                          <textarea 
+                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none h-24 resize-none"
+                              value={localData.curatedSelection?.description || ''}
+                              onChange={e => setLocalData({...localData, curatedSelection: {...(localData.curatedSelection || {}), description: e.target.value}})}
+                          />
+                     </div>
+
+                     <div className="space-y-2">
+                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Image</label>
+                        <div className="flex gap-4 items-center">
+                            <div className="relative w-20 h-20 bg-black border border-white/10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
+                               {localData.curatedSelection?.imageUrl ? (
+                                   <img src={localData.curatedSelection.imageUrl} alt="preview" className="w-full h-full object-cover"/>
+                               ) : (
+                                   <span className="text-[10px] text-gray-600 font-mono">No Image</span>
+                               )}
+                               {uploadingCurated && (
+                                   <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
+                                       <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                                   </div>
+                               )}
+                            </div>
+                            <div className="flex-1 space-y-2">
+                                <div className="relative">
+                                    <input 
+                                        type="file"
+                                        accept="image/*"
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        onChange={e => {
+                                            const file = e.target.files?.[0];
+                                            if (file) uploadCuratedImage(file);
+                                        }}
+                                    />
+                                    <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-3 text-xs font-mono transition-colors text-center">
+                                        {uploadingCurated ? 'Uploading...' : 'Choose Image File'}
+                                    </button>
+                                </div>
+                                <p className="text-[9px] text-gray-500 font-mono">Recommended aspect ratio: square/rect</p>
+                            </div>
+                        </div>
+                     </div>
                 </div>
             </div>
           )}
@@ -920,7 +1108,7 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
   return (
     <div 
       ref={observe}
-      className="group bg-[#111] border border-[#1E1E1E] rounded-xl overflow-hidden transition-all duration-300 hover:border-[#2A2A2A] hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)] transform hover:-translate-y-1"
+      className="group bg-[#111] border border-[#1E1E1E] rounded-xl overflow-hidden transition-all duration-300 hover:border-[#2A2A2A] hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)] transform hover:-translate-y-1 flex flex-col h-full"
     >
       <div className={`relative overflow-hidden cursor-pointer ${product.type === 'pdf' ? 'aspect-[3/4]' : 'aspect-video'}`} onClick={() => onPreview(product)}>
         <img 
@@ -966,23 +1154,25 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
         </button>
       </div>
 
-      <div className="p-6 flex flex-col h-full">
+      <div className="p-6 flex flex-col flex-grow">
         <div className="flex items-center justify-between mb-3">
           <span className="text-[10px] font-mono text-[#FF3B3B] tracking-[0.2em] font-bold uppercase">{product.category}</span>
           <span className="text-[10px] font-mono text-[#666] uppercase">{product.type === 'pdf' ? 'Printable' : 'Interactive'}</span>
         </div>
         <h3 className="text-white font-bold text-xl leading-tight mb-3 group-hover:text-[#FF3B3B] transition-colors cursor-pointer" onClick={() => onPreview(product)}>{product.title}</h3>
-        <p className="text-[#666] text-sm mb-2 line-clamp-2 leading-relaxed">{product.desc}</p>
+        <p className="text-[#666] text-sm mb-4 line-clamp-2 leading-relaxed">{product.desc}</p>
         
-        {/* Mobile Save Button */}
+        {/* Save to Library / Get Access Action Button */}
         <button 
-            onClick={() => onSave(product)}
-            className="md:hidden w-full bg-[#111] border border-white/5 text-white py-3 rounded-lg text-xs font-bold active:scale-95 transition-transform mb-6"
+            onClick={(e) => { e.stopPropagation(); onSave(product); }}
+            className="w-full bg-[#181818] border border-white/5 hover:border-[#FF3B3B] text-white hover:bg-[#FF3B3B] py-3.5 rounded-xl text-xs font-mono font-bold tracking-wider active:scale-[0.98] transition-all duration-200 mb-4 flex items-center justify-center gap-2 cursor-pointer"
         >
-            Save to Library +
+            {product.type === 'site' && product.title.toLowerCase().includes('netflix') 
+              ? 'GET ACCESS +' 
+              : 'SAVE TO LIBRARY +'}
         </button>
         
-        <div className="mt-auto flex items-center justify-between pt-6 border-t border-white/5">
+        <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
           <div className="flex flex-col">
             {!(product.type === 'site' && product.title.toLowerCase().includes('netflix')) ? (
                 <>
@@ -1009,6 +1199,8 @@ const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) =>
 };
 
 export default function App() {
+  const { scrollYProgress } = useScroll();
+  const heroParallax = useTransform(scrollYProgress, [0, 0.5], [0, 200]);
   const [products, setProducts] = useState<any[]>([]);
   const [categoriesFromDB, setCategoriesFromDB] = useState<any[]>([]);
   const [activeType, setActiveType] = useState('all');
@@ -1083,6 +1275,7 @@ export default function App() {
     stats: { number: string; label: string }[];
     footerTagline: string;
     howItWorks: { title: string; subtitle: string; imageUrl: string; steps: { num: string; title: string; desc: string }[] };
+    curatedSelection: { subtitle: string; title: string; description: string; imageUrl: string };
   }>({
     siteName: 'FRAMD',
     accentColor: '#FF3B3B',
@@ -1130,6 +1323,12 @@ export default function App() {
         { num: '02', title: 'Personalize Effortlessly', desc: 'Add your names, dates, and the photos that defined your year.' },
         { num: '03', title: 'Instant Delivery', desc: 'Download the source or site package immediately. Ready to share.' }
       ]
+    },
+    curatedSelection: {
+      subtitle: '✦ The Library',
+      title: 'Curated \n Selection.',
+      description: 'Every design is an original piece, crafted with premium typography and editorial layouts.',
+      imageUrl: 'https://firebasestorage.googleapis.com/v0/b/friendly-vigil-491809-m0.firebasestorage.app/o/howItWorks%2F1778235786466_Screenshot%202026-05-08%20154743.png?alt=media&token=477843e5-5ecc-4cbb-a9d9-0ba24e660bdb'
     }
   });
 
@@ -1167,7 +1366,11 @@ export default function App() {
           } : prev.netflixShowcase,
           stats: data.stats || prev.stats,
           footerTagline: data.footerTagline || prev.footerTagline,
-          howItWorks: data.howItWorks || prev.howItWorks
+          howItWorks: data.howItWorks || prev.howItWorks,
+          curatedSelection: data.curatedSelection ? {
+            ...prev.curatedSelection,
+            ...data.curatedSelection
+          } : prev.curatedSelection
         }));
 
         if (data.accentColor) {
@@ -1255,6 +1458,16 @@ export default function App() {
         </div>
       </nav>
 
+      {/* WhatsApp Button */}
+      <a
+        href="https://wa.me/919999999999"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-8 right-8 bg-green-500 text-white p-4 rounded-full shadow-lg z-50 hover:scale-110 transition-transform"
+      >
+        <MessageCircle size={24} />
+      </a>
+
       {/* Hero */}
       <section ref={observe} className="min-h-screen flex flex-col items-center justify-center pt-24 px-6 md:px-12 pb-16 relative overflow-hidden grain section-dark grid-pattern">
         {/* Animated Background Elements - Refined */}
@@ -1288,7 +1501,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="w-full md:w-1/2 relative h-[400px] md:h-[650px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
+          <motion.div style={{ y: heroParallax }} className="w-full md:w-1/2 relative h-[400px] md:h-[650px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
             <div className="absolute inset-0 flex items-center justify-center">
               {(adminData.heroImages.length > 0 ? adminData.heroImages : [null, null, null]).slice(0, 5).map((url, i, arr) => {
                 const total = arr.length;
@@ -1335,7 +1548,7 @@ export default function App() {
                 )
               })}
             </div>
-          </div>
+          </motion.div>
         </div>
 
         <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 opacity-30 hover:opacity-100 transition-opacity cursor-pointer animate-bounce">
@@ -1347,15 +1560,39 @@ export default function App() {
       </section>
 
       {/* Grid Section - Light */}
-      <section id="templates" ref={observe} className="py-40 px-6 md:px-12 section-light">
-        <div className="max-w-7xl mx-auto">
-          <div className="mb-24">
-            <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">✦ The Library</span>
-            <h2 className="font-display text-6xl md:text-8xl font-black mb-8 leading-none">Curated <br/>Selection.</h2>
-            <p className="text-gray-500 text-xl max-w-xl">Every design is an original piece, crafted with premium typography and editorial layouts.</p>
+      <section id="templates" ref={observe} className="py-24 px-6 md:px-12 section-light">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div>
+            <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">
+              {adminData.curatedSelection?.subtitle || "✦ The Library"}
+            </span>
+            <h2 className="font-display text-5xl md:text-7xl font-black mb-8 leading-none" dangerouslySetInnerHTML={{ __html: (adminData.curatedSelection?.title || "Curated<br/>Selection.").replace('\n', '<br/>') }}></h2>
+            <p className="text-gray-500 text-lg max-w-xl">
+              {adminData.curatedSelection?.description || "Every design is an original piece, crafted with premium typography and editorial layouts."}
+            </p>
           </div>
-          
-          {/* Filters */}
+          <div className="relative flex items-center justify-center h-[350px] md:h-[400px]">
+            {/* Ripple Wave Core Wrapper */}
+            <div className="relative w-44 h-44 md:w-56 md:h-56 flex items-center justify-center">
+              {/* Concentric waves with color density */}
+              <div className="absolute inset-0 rounded-full border-2 animate-ripple" style={{ borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 6%, transparent)', animationDelay: '0s' }}></div>
+              <div className="absolute inset-0 rounded-full border-2 animate-ripple" style={{ borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 4%, transparent)', animationDelay: '1s' }}></div>
+              <div className="absolute inset-0 rounded-full border animate-ripple" style={{ borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 2%, transparent)', animationDelay: '2s' }}></div>
+              
+              {/* Compact Image container */}
+              <div className="relative z-10 w-full h-full overflow-hidden border-4 border-white/10 p-1 bg-black shadow-2xl rounded-2xl">
+                 <img 
+                     src={adminData.curatedSelection?.imageUrl || adminData.howItWorks.imageUrl} 
+                     className="w-full h-full object-cover rounded-xl" 
+                     alt="Curated Selection" 
+                 />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Filters */}
+        <div className="max-w-7xl mx-auto mt-24">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-20">
             <div className="flex flex-wrap gap-2">
               {['all', 'pdf', 'site'].map(type => (
@@ -1406,11 +1643,12 @@ export default function App() {
       </section>
 
       {/* Netflix Experience Showcase */}
-      <section id="netflix-sites" ref={observe} className="py-40 px-6 md:px-12 section-dark grain relative overflow-hidden">
+      <section id="netflix-sites" ref={observe} className="py-24 md:py-32 px-6 md:px-12 section-dark grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_100%_0%,rgba(var(--accent-rgb),0.1),transparent)] pointer-events-none"></div>
         
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-20 items-center">
-          <div className="w-full lg:w-5/12">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row gap-20 items-center mb-16">
+            <div className="w-full lg:w-5/12">
             <div className="inline-block px-3 py-1 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full mb-6">
               <span className="text-[var(--accent)] text-[10px] font-mono font-bold tracking-widest uppercase">✦ Featured Artifact</span>
             </div>
@@ -1423,42 +1661,19 @@ export default function App() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-10 gap-x-12 mb-16">
               {adminData.netflixShowcase.features.map((feature, i) => (
-                <div key={i} className="space-y-3 group/feat">
+                  <div key={i} className="space-y-3 group/feat">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl group-hover/feat:scale-125 transition-transform duration-300">{feature.emoji}</span>
+                    <FeatureIcon emoji={feature.emoji} />
                     <h4 className="text-white font-bold text-sm uppercase tracking-widest">{feature.title}</h4>
                   </div>
                   <p className="text-[#555] text-xs leading-relaxed pl-9">{feature.desc}</p>
                 </div>
               ))}
             </div>
-
-            <div className="flex flex-col sm:flex-row items-center gap-8 p-10 bg-white/5 border border-white/10 rounded-3xl backdrop-blur-xl relative group">
-                <div className="absolute inset-0 bg-[var(--accent)]/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-3xl -z-10"></div>
-                <div className="flex flex-col">
-                    <span className="text-gray-500 text-xs line-through mb-1 uppercase tracking-widest">{adminData.netflixShowcase.originalPrice}</span>
-                    <div className="flex items-baseline gap-1">
-                        <span className="text-white text-5xl font-black font-mono tracking-tighter">{adminData.netflixShowcase.price}</span>
-                        <span className="text-[var(--accent)] font-bold text-xs">ONLY</span>
-                    </div>
-                </div>
-                <button 
-                  onClick={() => setPurchaseModalProduct({ 
-                    id: 'netflix-showcase', 
-                    title: adminData.netflixShowcase.title, 
-                    price: adminData.netflixShowcase.price,
-                    original: adminData.netflixShowcase.originalPrice,
-                    category: 'Anniversary Sites'
-                  })}
-                  className="flex-1 w-full bg-[var(--accent)] text-white py-5 px-8 rounded-2xl font-black text-sm uppercase tracking-widest hover:opacity-90 active:scale-95 transition-all shadow-[0_20px_50px_rgba(var(--accent-rgb),0.3)]"
-                >
-                    Get Access →
-                </button>
-            </div>
           </div>
 
           <div className="w-full lg:w-7/12">
-             <div className="grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[800px]">
+             <div className="w-full grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[800px]">
                 {/* Hero Slot */}
                 <div 
                     className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
@@ -1516,36 +1731,36 @@ export default function App() {
              </div>
           </div>
         </div>
-      </section>
 
-        <div className="mt-32 text-center">
-          <button 
-            onClick={() => {
-                const netflix = products.find(p => p.title.toLowerCase().includes('netflix'));
-                if (netflix) {
-                  setPurchaseModalProduct({
-                    id: netflix.id,
-                    title: netflix.title,
-                    price: netflix.price,
-                    original: netflix.original,
-                    category: netflix.category
-                  });
-                } else {
-                  setPurchaseModalProduct({
-                    id: 'netflix-showcase',
-                    title: adminData.netflixShowcase.title,
-                    price: adminData.netflixShowcase.price,
-                    original: adminData.netflixShowcase.originalPrice,
-                    category: 'Anniversary Sites'
-                  });
-                }
-            }}
-            className="bg-[var(--accent)] text-white px-12 py-5 rounded-lg text-xl font-bold hover:opacity-90 transition-all shadow-[0_20px_40px_rgba(var(--accent-rgb),0.4)] mb-6"
-          >
-            Get the Netflix Template →
-          </button>
-          <p className="text-[#555] text-sm font-medium">Instant access · Fully customizable · Limited period free</p>
+        <div className="text-center flex flex-col items-center justify-center mt-4">
+             <button 
+                 onClick={() => {
+                     const netflix = products.find(p => p.title.toLowerCase().includes('netflix'));
+                     if (netflix) {
+                         setPurchaseModalProduct({
+                             id: netflix.id,
+                             title: netflix.title,
+                             price: netflix.price,
+                             original: netflix.original,
+                             category: netflix.category
+                         });
+                     } else {
+                         setPurchaseModalProduct({
+                             id: 'netflix-showcase',
+                             title: adminData.netflixShowcase.title,
+                             price: adminData.netflixShowcase.price,
+                             original: adminData.netflixShowcase.originalPrice,
+                             category: 'Anniversary Sites'
+                         });
+                     }
+                 }}
+                 className="bg-[var(--accent)] text-white px-12 py-5 rounded-lg text-xl font-bold hover:opacity-90 transition-all shadow-[0_20px_40px_rgba(var(--accent-rgb),0.4)] active:scale-[0.98] cursor-pointer"
+             >
+                 Get the Netflix Template →
+             </button>
         </div>
+      </div>
+    </section>
 
       {/* How It Works - Light alternate */}
       <section id="about" ref={observe} className="py-24 md:py-40 section-light border-y border-gray-100">
@@ -1589,17 +1804,17 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex gap-6 md:gap-8 overflow-x-auto no-scrollbar px-6 md:px-12 py-12 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-6 md:px-12 max-w-7xl mx-auto py-12">
           {testimonials.map((t, idx) => (
-            <div key={idx} className="w-[280px] sm:w-[350px] shrink-0 bg-[#0D0D0D] border border-white/5 rounded-2xl p-8 md:p-10 transition-all hover:border-white/10 hover:-translate-y-2 group">
-              <div className="text-[#FFD60A] text-2xl mb-8 opacity-50 group-hover:opacity-100 italic">"</div>
-              <p className="text-white italic text-lg leading-relaxed mb-12 min-h-[140px] font-medium opacity-80 group-hover:opacity-100 transition-opacity">"{t.text}"</p>
-              <div className="flex items-center gap-4">
-                 <div className="w-10 h-10 rounded-full bg-white/10"></div>
-                 <div>
-                    <p className="text-white font-bold">{t.author}</p>
-                    <p className="text-[#555] text-xs uppercase tracking-widest font-bold">{t.location}</p>
-                 </div>
+            <div key={idx} className="bg-[#0D0D0D] border border-white/5 rounded-2xl p-8 transition-all hover:border-white/10 hover:-translate-y-2 group flex flex-col">
+              <div className="text-[var(--accent)] text-4xl mb-6 opacity-50 group-hover:opacity-100 italic">"</div>
+              <p className="text-white italic text-base leading-relaxed mb-6 font-medium opacity-80 group-hover:opacity-100 transition-opacity flex-1">"{t.text}"</p>
+              <div className="flex items-center gap-4 pt-6 border-t border-white/5">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center font-bold text-xs text-[var(--accent)]">{t.author.split(' ').map(n=>n[0]).join('')}</div>
+                <div>
+                   <p className="text-white text-xs font-bold">{t.author}</p>
+                   <p className="text-gray-500 text-[10px] tracking-widest uppercase">{t.location}</p>
+                </div>
               </div>
             </div>
           ))}
