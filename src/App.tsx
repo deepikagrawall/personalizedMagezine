@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, useScroll, useTransform } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Film, Play, Layout, Zap, Package, Layers } from 'lucide-react';
+import { MessageCircle, Film, Play, Layout, Zap, Package, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { db, storage, auth } from './lib/firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -1765,6 +1765,19 @@ export default function App() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [currentArtifactIdx, setCurrentArtifactIdx] = useState(0);
+
+  const bestArtifacts = useMemo(() => products.filter(p => p.isBest).slice(0, 5), [products]);
+
+  useEffect(() => {
+    if (bestArtifacts.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentArtifactIdx(prev => (prev + 1) % bestArtifacts.length);
+      }, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [bestArtifacts]);
 
   useEffect(() => {
     return onAuthStateChanged(auth, (u) => {
@@ -2127,23 +2140,58 @@ export default function App() {
               {adminData.curatedSelection?.description || "Every design is an original piece, crafted with premium typography and editorial layouts."}
             </p>
           </div>
-          <div className="relative flex items-center justify-center h-[350px] md:h-[400px]">
-            {/* Ripple Wave Core Wrapper */}
-            <div className="relative w-44 h-44 md:w-56 md:h-56 flex items-center justify-center">
-              {/* Concentric waves with color density */}
-              <div className="absolute inset-0 rounded-full border-2 animate-ripple" style={{ borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 6%, transparent)', animationDelay: '0s' }}></div>
-              <div className="absolute inset-0 rounded-full border-2 animate-ripple" style={{ borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 4%, transparent)', animationDelay: '1s' }}></div>
-              <div className="absolute inset-0 rounded-full border animate-ripple" style={{ borderColor: 'var(--accent)', backgroundColor: 'color-mix(in srgb, var(--accent) 2%, transparent)', animationDelay: '2s' }}></div>
-              
-              {/* Compact Image container */}
-              <div className="relative z-10 w-full h-full overflow-hidden border-4 border-white/10 p-1 bg-black shadow-2xl rounded-2xl">
-                 <img 
-                     src={adminData.curatedSelection?.imageUrl || adminData.howItWorks.imageUrl} 
-                     className="w-full h-full object-cover rounded-xl" 
-                     alt="Curated Selection" 
-                 />
-              </div>
-            </div>
+          <div className="relative flex items-center justify-center h-[450px] md:h-[550px]">
+             {/* Artifact Carousel Intro */}
+             <div className="relative w-full h-full flex items-center justify-center">
+                {bestArtifacts.length > 0 ? (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    {/* Stacked Cards Layout */}
+                    {bestArtifacts.map((art, idx) => (
+                      <motion.div
+                        key={art.id}
+                        initial={false}
+                        animate={{ 
+                          opacity: currentArtifactIdx === idx ? 1 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 0.4 : 0,
+                          scale: currentArtifactIdx === idx ? 1 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 0.9 : 0.8,
+                          rotate: currentArtifactIdx === idx ? 0 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 5 : -5,
+                          x: currentArtifactIdx === idx ? 0 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 40 : -40,
+                          zIndex: currentArtifactIdx === idx ? 20 : 10,
+                          filter: currentArtifactIdx === idx ? 'blur(0px)' : 'blur(2px)'
+                         }}
+                        transition={{ duration: 1, ease: [0.23, 1, 0.32, 1] }}
+                        className="absolute w-[220px] md:w-[280px] aspect-[3/4] rounded-2xl overflow-hidden border-4 border-white shadow-[0_40px_100px_rgba(0,0,0,0.6)] cursor-pointer group/art"
+                        onClick={() => setSelectedProduct(art)}
+                      >
+                         <img src={art.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover/art:scale-110" alt={art.title} />
+                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
+                            <span className="text-[10px] font-mono text-[var(--accent)] uppercase tracking-[0.3em] font-bold mb-2">Featured Artifact</span>
+                            <h4 className="text-white font-display text-lg md:text-xl font-bold leading-tight line-clamp-2">{art.title}</h4>
+                            <div className="h-0 group-hover/art:h-6 transition-all duration-300 opacity-0 group-hover/art:opacity-100 flex items-center mt-2">
+                               <span className="text-white text-[10px] font-mono uppercase tracking-widest">Get Access →</span>
+                            </div>
+                         </div>
+                      </motion.div>
+                    ))}
+                    
+                    {/* Visual Pulse / Ripple */}
+                    <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
+                       <div className="w-[300px] h-[300px] md:w-[450px] md:h-[450px] rounded-full border border-[var(--accent)]/30 animate-ripple"></div>
+                       <div className="absolute w-[300px] h-[300px] md:w-[450px] md:h-[450px] rounded-full border border-[var(--accent)]/10 animate-ripple" style={{ animationDelay: '1.5s' }}></div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative w-56 h-56 md:w-72 md:h-72 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full border-2 border-[var(--accent)]/20 animate-ripple"></div>
+                    <div className="relative z-10 w-full h-full overflow-hidden border-4 border-white p-1 bg-black shadow-2xl rounded-2xl">
+                      <img 
+                          src={adminData.curatedSelection?.imageUrl || adminData.howItWorks.imageUrl} 
+                          className="w-full h-full object-cover rounded-xl" 
+                          alt="Curated Selection" 
+                      />
+                    </div>
+                  </div>
+                )}
+             </div>
           </div>
         </div>
         
@@ -2183,18 +2231,59 @@ export default function App() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-16">
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map(product => (
-                <ProductCard key={product.id} product={product} observe={observe} onPreview={setSelectedProduct} onSave={setPurchaseModalProduct} />
-              ))
-            ) : (
-                <div className="col-span-full py-40 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center">
-                    <span className="text-4xl mb-4">🔮</span>
-                    <p className="text-gray-400 font-bold italic">Artifacts in development. Coming soon.</p>
-                </div>
-            )}
-          </div>
+          {filteredProducts.length > 0 ? (
+            <div className="relative group/carousel px-4">
+              {/* Left Navigation Arrow */}
+              {filteredProducts.length > 4 && (
+                <button 
+                  onClick={() => {
+                    if (carouselRef.current) {
+                      carouselRef.current.scrollBy({ left: -carouselRef.current.offsetWidth, behavior: 'smooth' });
+                    }
+                  }}
+                  className="absolute -left-6 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white text-black hover:bg-gray-100 hover:scale-110 font-bold shadow-2xl border border-gray-200 flex items-center justify-center transition-all duration-300 opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 cursor-pointer hidden md:flex"
+                  title="Previous"
+                >
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+              )}
+
+              {/* Right Navigation Arrow */}
+              {filteredProducts.length > 4 && (
+                <button 
+                  onClick={() => {
+                    if (carouselRef.current) {
+                      carouselRef.current.scrollBy({ left: carouselRef.current.offsetWidth, behavior: 'smooth' });
+                    }
+                  }}
+                  className="absolute -right-6 top-1/2 -translate-y-1/2 z-20 w-12 h-12 rounded-full bg-white text-black hover:bg-gray-100 hover:scale-110 font-bold shadow-2xl border border-gray-200 flex items-center justify-center transition-all duration-300 opacity-0 group-hover/carousel:opacity-100 disabled:opacity-0 cursor-pointer hidden md:flex"
+                  title="Next"
+                >
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+              )}
+
+              {/* Carousel Container */}
+              <div 
+                ref={carouselRef}
+                className={`flex gap-8 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-4 -my-4 ${filteredProducts.length <= 4 ? 'md:justify-center' : ''}`}
+              >
+                {filteredProducts.map(product => (
+                  <div 
+                    key={product.id} 
+                    className="w-[280px] sm:w-[calc(50%-16px)] lg:w-[calc(25%-24px)] shrink-0 snap-start"
+                  >
+                    <ProductCard product={product} observe={observe} onPreview={setSelectedProduct} onSave={setPurchaseModalProduct} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="py-40 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center col-span-full">
+              <span className="text-4xl mb-4">🔮</span>
+              <p className="text-gray-400 font-bold italic">Artifacts in development. Coming soon.</p>
+            </div>
+          )}
         </div>
       </section>
 
