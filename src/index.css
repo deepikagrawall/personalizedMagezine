@@ -1,63 +1,109 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-
-  /* Fintech Paytm-inspired Palette */
-  --color-paytm-blue: #00BAF2;
-  --color-paytm-dark: #002E6E;
-  --color-paytm-light: #F0FBFF;
-  --color-upi-green: #25D366;
-  --color-luxury-white: #FFFFFF;
-  --color-soft-gray: #F5F7FA;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Playfair Display", serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-accent: #FF3B3B;
+  --color-gold: #FFD60A;
+  --color-surface: #111111;
+  --color-surface2: #161616;
+  --color-light: #F9F9F9;
+  --color-dark: #0A0A0A;
 }
 
 @layer base {
-  body {
-    @apply bg-slate-50 text-slate-900 selection:bg-paytm-blue/30 overflow-hidden h-full;
-  }
   html {
-    @apply h-full;
+    scroll-behavior: smooth;
   }
-  #root {
-    @apply h-full;
+  
+  body {
+    @apply bg-dark text-white antialiased overflow-x-hidden;
+  }
+
+  /* Grain overlay */
+  .grain::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    pointer-events: none;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.035;
   }
 }
 
-@layer utilities {
-  .paytm-gradient {
-    background: linear-gradient(135deg, #00BAF2 0%, #002E6E 100%);
-  }
+.section-light {
+  @apply bg-light text-dark;
+}
 
-  .scanner-line {
-    @apply absolute w-full h-[1.5px] bg-paytm-blue/50 shadow-[0_0_10px_#00BAF2];
-    animation: scan 3s ease-in-out infinite;
-  }
+.section-dark {
+  @apply bg-dark text-white;
+}
 
-  .qr-corner {
-    @apply absolute w-6 h-6 border-paytm-blue;
-  }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0A0A0A;
+}
+::-webkit-scrollbar-thumb {
+  background: #2A2A2A;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3A3A;
+}
 
-  .card-shadow {
-    box-shadow: 0 4px 20px -2px rgba(0, 46, 110, 0.08);
-  }
+/* Animations */
+@keyframes float {
+  0% { transform: translateY(0px) rotate3d(0, 1, 0, var(--rot, -2deg)); }
+  100% { transform: translateY(-20px) rotate3d(0, 1, 0, var(--rot, -15deg)); }
+}
 
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
+.animate-float {
+  animation: float 4s ease-in-out infinite alternate;
+}
+
+@keyframes ripple {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
   }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
   }
 }
 
-@keyframes scan {
-  0%, 100% { top: 5%; opacity: 0.2; }
-  50% { top: 95%; opacity: 1; }
+.animate-ripple {
+  animation: ripple 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
 }
 
-.scanner-overlay {
-  background: radial-gradient(circle, transparent 150px, rgba(0,0,0,0.4) 150px);
+section {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 800ms cubic-bezier(0.4, 0, 0.2, 1), transform 800ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+section.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.grid-pattern {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
 }

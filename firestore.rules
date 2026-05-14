@@ -1,46 +1,97 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global Safety Net
+    // Default deny
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Helper Functions
+    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
-
-    function isVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
-    }
-
+    
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        request.auth.token.email == 'deeagrawal078@gmail.com' && 
+        request.auth.token.email_verified == true
+      );
     }
 
-    function isValidConfig(data) {
-      return data.keys().hasAll(['homeHeading', 'unlockedHeading', 'recipientName']) &&
-             data.recipientName is string && data.recipientName.size() <= 100 &&
-             data.homeHeading is string && data.homeHeading.size() <= 500 &&
-             data.unlockedHeading is string && data.unlockedHeading.size() <= 500 &&
-             (!('unlockedMessage' in data) || (data.unlockedMessage is string && data.unlockedMessage.size() <= 5000));
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
-    // App Configuration
-    match /configs/main {
-      allow read: if true; // Publicly readable for the app to function
-      allow write: if isAdmin() && isValidConfig(request.resource.data);
+    function incoming() {
+      return request.resource.data;
     }
 
-    // Admin Users
-    match /admins/{userId} {
-      allow read: if isSignedIn() && request.auth.uid == userId;
-      // Allow bootstrapping for the primary admin email
-      allow write: if isSignedIn() && 
-                    request.auth.token.email == 'deeagrawal078@gmail.com' && 
-                    request.auth.token.email_verified == true &&
-                    request.auth.uid == userId;
+    function existing() {
+      return resource.data;
+    }
+
+    // Validation Blueprints
+    function isValidProduct(data) {
+      return data.keys().hasAll(['type', 'category', 'title', 'desc', 'price', 'seed']) &&
+             data.type in ['pdf', 'site'] &&
+             data.category is string && data.category.size() <= 100 &&
+             data.title is string && data.title.size() <= 200 &&
+             data.desc is string && data.desc.size() <= 2000 &&
+             data.price is string && data.price.size() <= 20 &&
+             data.seed is number &&
+             data.keys().size() <= 15;
+    }
+
+    function isValidRequest(data) {
+      return data.keys().hasAll(['productId', 'productTitle', 'name', 'email', 'phone', 'occasion']) &&
+             data.productId is string && data.productTitle is string &&
+             data.name is string && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 150 &&
+             data.phone is string && data.phone.size() <= 20 &&
+             data.occasion is string && data.occasion.size() <= 200;
+    }
+
+    function isValidCategory(data) {
+      return data.keys().hasAll(['name']) &&
+             data.name is string && data.name.size() <= 50 &&
+             data.keys().size() == 1;
+    }
+
+    function isValidSiteSettings(data) {
+      return (data.siteName is string || !data.keys().hasAny(['siteName'])) &&
+             (data.accentColor is string || !data.keys().hasAny(['accentColor'])) &&
+             (data.heroTagline is string || !data.keys().hasAny(['heroTagline'])) &&
+             (data.heroTitlePart1 is string || !data.keys().hasAny(['heroTitlePart1'])) &&
+             (data.netflixTitle is string || !data.keys().hasAny(['netflixTitle']));
+    }
+
+    // Collection Rules
+    match /products/{productId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidProduct(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin() && isValidProduct(incoming()) && 
+                    incoming().createdAt == existing().createdAt &&
+                    incoming().diff(existing()).affectedKeys().hasOnly(['type', 'category', 'title', 'desc', 'price', 'original', 'seed', 'isNew', 'isBest', 'pdfUrl', 'videoUrl', 'imageUrl', 'updatedAt', 'whatsInside']);
+      allow delete: if isAdmin();
+    }
+
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidCategory(incoming());
+      allow update: if isAdmin() && isValidCategory(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /requests/{requestId} {
+      allow read: if isAdmin();
+      allow create: if isValidRequest(incoming()) && incoming().createdAt == request.time;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin() && isValidSiteSettings(incoming());
     }
   }
 }

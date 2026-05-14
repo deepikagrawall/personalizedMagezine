@@ -1,42 +1,97 @@
 {
   "entities": {
-    "appConfig": {
-      "title": "App Configuration",
-      "description": "Stores the dynamic content for the app.",
+    "Product": {
+      "title": "Product",
+      "description": "A template product (PDF or Website)",
       "type": "object",
       "properties": {
-        "recipientName": { "type": "string" },
-        "homeHeading": { "type": "string" },
-        "birthdaySurpriseTitle": { "type": "string" },
-        "birthdaySurpriseSub": { "type": "string" },
-        "unlockedHeading": { "type": "string" },
-        "unlockedSubHeading": { "type": "string" },
-        "unlockedMessage": { "type": "string" },
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["pdf", "site"] },
+        "category": { "type": "string" },
+        "title": { "type": "string" },
+        "desc": { "type": "string" },
+        "price": { "type": "string" },
+        "original": { "type": "string" },
+        "seed": { "type": "number" },
+        "isNew": { "type": "boolean" },
+        "isBest": { "type": "boolean" },
+        "whatsInside": { "type": "array", "items": { "type": "string" } },
         "pdfUrl": { "type": "string" },
-        "unlockCode": { "type": "string" },
-        "lastUpdated": { "type": "string", "format": "date-time" }
+        "videoUrl": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["homeHeading", "unlockedHeading"]
+      "required": ["type", "category", "title", "seed"]
     },
-    "admin": {
-      "title": "Admin User",
-      "description": "Stores admin user information.",
+    "Request": {
+      "title": "Request",
+      "description": "User lead request for a template",
       "type": "object",
       "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productTitle": { "type": "string" },
+        "name": { "type": "string" },
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin"] }
+        "phone": { "type": "string" },
+        "occasion": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "contacted", "delivered"] },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["email", "role"]
+      "required": ["productId", "name", "email"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Product category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "SiteSettings": {
+      "title": "SiteSettings",
+      "description": "Global application settings including hero and netflix showcase",
+      "type": "object",
+      "properties": {
+        "siteName": { "type": "string" },
+        "accentColor": { "type": "string" },
+        "heroTagline": { "type": "string" },
+        "heroTitlePart1": { "type": "string" },
+        "heroTitlePart2": { "type": "string" },
+        "heroTitlePart3": { "type": "string" },
+        "heroDescription": { "type": "string" },
+        "heroPrimaryButtonText": { "type": "string" },
+        "heroSecondaryButtonText": { "type": "string" },
+        "heroImages": { "type": "array", "items": { "type": "string" } },
+        "netflixTitle": { "type": "string" },
+        "netflixSubtitle": { "type": "string" },
+        "netflixPrice": { "type": "string" },
+        "netflixOriginalPrice": { "type": "string" },
+        "netflixFeatures": { "type": "array", "items": { "type": "object" } },
+        "netflixScreenshots": { "type": "array", "items": { "type": "object" } },
+        "stats": { "type": "array", "items": { "type": "object" } },
+        "footerTagline": { "type": "string" }
+      }
     }
   },
   "firestore": {
-    "configs/main": {
-      "schema": "appConfig",
-      "description": "The main configuration document."
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of all templates"
     },
-    "admins/{userId}": {
-      "schema": "admin",
-      "description": "Admin users collection."
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of product categories"
+    },
+    "/requests/{requestId}": {
+      "schema": "Request",
+      "description": "Collection of user lead requests"
+    },
+    "/settings/{settingId}": {
+      "schema": "SiteSettings",
+      "description": "Global application settings"
     }
   }
 }
