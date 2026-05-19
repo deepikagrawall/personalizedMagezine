@@ -16,6 +16,7 @@ export const Admin = () => {
   // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [heroForm, setHeroForm] = useState<{
+    siteName: string;
     tagline: string;
     titlePart1: string;
     titlePart2: string;
@@ -25,6 +26,7 @@ export const Admin = () => {
     secondaryButtonText: string;
     heroImages: string[];
   }>({
+    siteName: 'ARTIFACT',
     tagline: 'Premium Digital Artifacts',
     titlePart1: 'CRAFTING MOMENTS',
     titlePart2: 'INTO DIGITAL ART.',
@@ -599,6 +601,15 @@ export const Admin = () => {
                     <span className="text-[#FF3B3B]">✦</span> Hero Banner Configuration
                 </h2>
                 <form onSubmit={handleSaveHeroSettings} className="space-y-6 bg-[#111] p-8 rounded-2xl border border-white/5">
+                    <div className="space-y-2">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Site Name</label>
+                        <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-4 outline-none focus:border-[#FF3B3B] font-bold"
+                            value={heroForm.siteName}
+                            onChange={e => setHeroForm({...heroForm, siteName: e.target.value})}
+                            required
+                        />
+                    </div>
                     <div className="space-y-2">
                         <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Tagline</label>
                         <input 

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { motion, useScroll, useTransform } from 'motion/react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, Film, Play, Layout, Zap, Package, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
 import { db, storage, auth } from './lib/firebase';
@@ -1813,7 +1813,13 @@ export default function App() {
     }
   };
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [minTimePassed, setMinTimePassed] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMinTimePassed(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const testimonials = [
     { text: "recreated everything. even the trailers. worth every penny.", author: "Aryan Sharma", location: "Bangalore" },
@@ -1846,7 +1852,7 @@ export default function App() {
     howItWorks: { title: string; subtitle: string; imageUrl: string; steps: { num: string; title: string; desc: string }[] };
     curatedSelection: { subtitle: string; title: string; description: string; imageUrl: string };
   }>({
-    siteName: 'FRAMD',
+    siteName: 'ARTIFACT',
     accentColor: '#FF3B3B',
     heroTagline: 'Now in Beta: Access Everything for Free',
     heroTitlePart1: 'Digital',
@@ -1973,25 +1979,96 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-16 h-16 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-white font-mono text-xs tracking-widest uppercase">Loading Artifacts...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-black overflow-x-hidden selection:bg-[var(--accent)] selection:text-white">
+      <AnimatePresence>
+        {(loading || !minTimePassed) && (
+          <motion.div 
+            key="loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: "easeInOut" }}
+            className="fixed inset-0 z-[1000] bg-[#0a0a0a] flex items-center justify-center overflow-hidden"
+          >
+            {/* Step 1: Thin horizontal line */}
+            <motion.div 
+              initial={{ scaleX: 0, opacity: 0 }}
+              animate={{ scaleX: 1, opacity: 0.1 }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+              className="absolute h-[1px] w-full bg-white top-1/2 left-0 -translate-y-1/2 origin-center"
+            />
+
+            <div className="relative flex flex-col items-center">
+              {/* Step 2: Morphing Geometric Shapes */}
+              <div className="relative w-32 h-32 md:w-48 md:h-48 mb-16 flex items-center justify-center">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+                  animate={{ 
+                    opacity: 1, 
+                    scale: 1,
+                    rotate: [0, 90, 180, 270, 360],
+                    borderRadius: ["50%", "0%", "50%"],
+                  }}
+                  transition={{ 
+                    opacity: { duration: 1, delay: 0.5 },
+                    scale: { duration: 1.2, delay: 0.5, ease: [0.22, 1, 0.36, 1] },
+                    rotate: { duration: 8, repeat: Infinity, ease: "linear" },
+                    borderRadius: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+                  }}
+                  className="w-20 h-20 md:w-28 md:h-28 border border-white/40 relative"
+                >
+                   {/* Inner accent shape */}
+                   <motion.div
+                    animate={{ 
+                      scale: [1, 0.6, 1],
+                      opacity: [0.2, 0.8, 0.2],
+                    }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute inset-2 border border-[var(--accent)]"
+                   />
+                </motion.div>
+                
+                {/* Secondary floating elements */}
+                <motion.div
+                  animate={{ opacity: [0, 0.5, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, delay: 1 }}
+                  className="absolute w-full h-full border border-white/5 rounded-full scale-125"
+                />
+              </div>
+
+              {/* Step 3: Progress bar Underneath */}
+              <div className="w-48 md:w-64 h-[1px] bg-white/10 relative overflow-hidden mb-6">
+                <motion.div 
+                  initial={{ x: "-100%" }}
+                  animate={{ x: "0%" }}
+                  transition={{ duration: 2, delay: 0.8, ease: "easeInOut" }}
+                  className="absolute inset-0 bg-white/60"
+                />
+              </div>
+
+              {/* Step 4: Tagline */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1, delay: 2 }}
+              >
+                <p className="text-white/30 font-mono text-[10px] uppercase tracking-[0.5em] font-medium">
+                  Customized Digital Moments
+                </p>
+              </motion.div>
+            </div>
+
+            {/* Subtle Grain Effect for Cinematic Feel */}
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Navbar */}
       <nav className={`fixed top-0 w-full h-16 flex items-center justify-between px-6 md:px-12 z-[100] transition-all duration-300 ${
         scrolled ? 'bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-white/10' : 'bg-transparent'
       }`}>
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-          <span className="font-display text-2xl italic font-black text-white">FRAMD<span className="text-[#FF3B3B]">.</span></span>
+          <span className="font-display text-2xl italic font-black text-white">{adminData.siteName}<span className="text-[var(--accent)]">.</span></span>
         </div>
 
         <div className="hidden md:flex items-center gap-8">
@@ -2573,7 +2650,7 @@ export default function App() {
       <footer className="pt-32 pb-12 px-6 md:px-12 bg-[#0A0A0A] border-t border-white/5">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16 mb-24">
           <div className="md:col-span-2">
-            <span className="font-display text-3xl italic font-black text-white mb-6 block">FRAMD<span className="text-[#FF3B3B]">.</span></span>
+            <span className="font-display text-3xl italic font-black text-white mb-6 block">{adminData.siteName}<span className="text-[var(--accent)]">.</span></span>
             <p className="text-[#666] max-w-[300px] leading-relaxed mb-8">
               The world's premium marketplace for digital anniversary templates and cinematic story websites.
             </p>
@@ -2607,7 +2684,7 @@ export default function App() {
         </div>
 
         <div className="max-w-7xl mx-auto pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-[#444] text-[10px] uppercase font-mono tracking-widest">© 2025 FRAMD. Made with ❤️ for moments that matter.</p>
+          <p className="text-[#444] text-[10px] uppercase font-mono tracking-widest">© 2025 {adminData.siteName}. Made with ❤️ for moments that matter.</p>
           <div className="flex items-center gap-8">
             {!user ? (
               <button 
@@ -2635,7 +2712,7 @@ export default function App() {
       {mobileMenuOpen && (
         <div className="fixed inset-0 bg-[#0A0A0A] z-[500] flex flex-col p-8 md:hidden text-white">
           <div className="flex justify-between items-center mb-16">
-            <span className="font-display text-2xl italic font-black text-white">FRAMD<span className="text-[var(--accent)]">.</span></span>
+            <span className="font-display text-2xl italic font-black text-white">{adminData.siteName}<span className="text-[var(--accent)]">.</span></span>
             <button onClick={() => setMobileMenuOpen(false)} className="text-white"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
           </div>
           <div className="flex flex-col gap-4">
