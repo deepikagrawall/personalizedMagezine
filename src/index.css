@@ -107,3 +107,28 @@ section.visible {
     linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 60px 60px;
 }
+
+@keyframes paytm-laser {
+  0%, 100% {
+    top: 0%;
+    opacity: 0.3;
+  }
+  50% {
+    top: 100%;
+    opacity: 1;
+  }
+}
+
+@keyframes netflix-laser {
+  0%, 100% {
+    top: 0%;
+    opacity: 0.4;
+    filter: drop-shadow(0 0 4px #FF3B3B);
+  }
+  50% {
+    top: 100%;
+    opacity: 1;
+    filter: drop-shadow(0 0 12px #FF3B3B);
+  }
+}
+

@@ -6,257 +6,20 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, Film, Play, Layout, Zap, Package, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
-import { db, storage, auth } from './lib/firebase';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { db, auth } from './lib/firebase';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 
-const FeatureIcon = ({emoji, className}: {emoji: string, className?: string}) => {
-    switch(emoji) {
-        case '🎥': return <Film className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '🎬': return <Film className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '🚀': return <Zap className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '🎨': return <Layout className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '⚡': return <Play className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '🎞️': return <Film className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '📼': return <Package className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '🔍': return <Layers className={`text-[var(--accent)] ${className}`} size={24} />;
-        case '📱': return <Layout className={`text-[var(--accent)] ${className}`} size={24} />;
-        default: return <span className="text-2xl">{emoji}</span>;
-    }
-};
+// Modular component imports
+import { FeatureIcon, PaytmFeatureIcon } from './components/FeatureIcons';
+import { PurchaseModal } from './components/PurchaseModal';
+import { AdminSidePanel } from './components/AdminSidePanel';
+import { PreviewModal } from './components/PreviewModal';
+import { ProductCard } from './components/ProductCard';
 
 // --- DATA ---
 
-// --- PURCHASE MODAL ---
-const PurchaseModal = ({ product, isOpen, onClose }: { product: any, isOpen: boolean, onClose: () => void }) => {
-  const [step, setStep] = useState<'form' | 'success'>('form');
-  const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    occasion: 'Anniversary',
-    coupleNames: '',
-    message: '',
-    referral: 'Google',
-    format: 'PDF'
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      setStep('form');
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.name) newErrors.name = 'Full name is required';
-    if (!formData.email) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email format';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
-    setLoading(true);
-    
-    try {
-      await addDoc(collection(db, 'requests'), {
-        ...formData,
-        productId: product.id,
-        productTitle: product.title,
-        status: 'pending',
-        createdAt: serverTimestamp()
-      });
-      console.log('Purchase Submitted:', { ...formData, productTitle: product.title });
-      setTimeout(() => {
-        setLoading(false);
-        setStep('success');
-      }, 1500);
-    } catch (err) {
-      console.error(err);
-      alert('Error submitting request');
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[500] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md animate-[fadeIn_0.3s_ease-out]">
-      <div className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full md:w-[60vw] max-w-4xl p-5 sm:p-6 md:p-8 overflow-y-auto max-h-[85vh] no-scrollbar">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors z-20">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
-
-        {step === 'form' ? (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-8 items-start w-full">
-            {/* Left Column: Product Details */}
-            <div className="md:col-span-5 space-y-4 md:border-r md:border-[#222] md:pr-6 md:mr-2">
-              <div>
-                <span className="font-mono text-[10px] text-[var(--accent)] tracking-widest font-bold mb-1.5 block uppercase">✦ ONE-TIME ACCESS</span>
-                <h2 className="font-display text-xl md:text-2xl text-white font-bold leading-tight">Get {product.title}</h2>
-                <p className="text-gray-400 text-xs mt-1 leading-relaxed">Fill in your details, and we will personalize your digital package immediately.</p>
-              </div>
-
-              <div className="flex items-baseline gap-2 py-2 border-y border-[#202020]">
-                <span className="text-3xl font-black font-mono text-white">{product.price}</span>
-                {product.original && <span className="text-gray-600 line-through text-xs font-mono">{product.original}</span>}
-              </div>
-
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-gray-400">Included Core Features:</span>
-                <div className="space-y-1">
-                  <p className="text-gray-400 text-[11px] flex items-center gap-2">
-                    <span className="text-[var(--accent)] font-bold">✓</span> Personalized Content Update
-                  </p>
-                  <p className="text-gray-400 text-[11px] flex items-center gap-2">
-                    <span className="text-[var(--accent)] font-bold">✓</span> Optimized Deliverables
-                  </p>
-                  <p className="text-gray-400 text-[11px] flex items-center gap-2">
-                    <span className="text-[var(--accent)] font-bold">✓</span> Setup Guide & Live Assistance
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Compact Form */}
-            <div className="md:col-span-7">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Full Name *</label>
-                    <input 
-                      className={`w-full bg-[#0A0A0A] border ${errors.name ? 'border-[var(--accent)]' : 'border-[#222]'} rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all`}
-                      placeholder="Your name"
-                      value={formData.name}
-                      onChange={e => setFormData({...formData, name: e.target.value})}
-                    />
-                    {errors.name && <p className="text-[var(--accent)] text-[9px] uppercase font-bold">{errors.name}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Email Address *</label>
-                    <input 
-                      className={`w-full bg-[#0A0A0A] border ${errors.email ? 'border-[var(--accent)]' : 'border-[#222]'} rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all`}
-                      placeholder="your@email.com"
-                      type="email"
-                      value={formData.email}
-                      onChange={e => setFormData({...formData, email: e.target.value})}
-                    />
-                    {errors.email && <p className="text-[var(--accent)] text-[9px] uppercase font-bold">{errors.email}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Phone Number</label>
-                    <input 
-                      className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all"
-                      placeholder="+91 XXXXX XXXXX"
-                      value={formData.phone}
-                      onChange={e => setFormData({...formData, phone: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Occasion Type</label>
-                    <select 
-                      className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all appearance-none"
-                      value={formData.occasion}
-                      onChange={e => setFormData({...formData, occasion: e.target.value})}
-                    >
-                      {['Anniversary', 'Birthday', 'Proposal', 'Couple', 'Memorial', 'Friendship', 'Other'].map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {product.title.toLowerCase().includes('netflix') || product.category.toLowerCase().includes('anniversary') ? (
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Couple Names (Optional)</label>
-                      <input 
-                        className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all"
-                        placeholder="e.g. Priya & Karan"
-                        value={formData.coupleNames}
-                        onChange={e => setFormData({...formData, coupleNames: e.target.value})}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Preferred File Format</label>
-                      <select 
-                        className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all appearance-none"
-                        value={formData.format}
-                        onChange={e => setFormData({...formData, format: e.target.value})}
-                      >
-                        <option value="PDF">PDF</option>
-                        <option value="PNG">PNG</option>
-                        <option value="Both">Both</option>
-                      </select>
-                    </div>
-                  )}
-
-                  <div className="space-y-1">
-                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">How did you hear?</label>
-                    <select 
-                      className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all appearance-none"
-                      value={formData.referral}
-                      onChange={e => setFormData({...formData, referral: e.target.value})}
-                    >
-                      {['Instagram', "Friend's Recommendation", 'Google', 'Other'].map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Special Message (Optional)</label>
-                  <textarea 
-                    className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all h-20 resize-none"
-                    placeholder="Any customization notes or special requests..."
-                    value={formData.message}
-                    onChange={e => setFormData({...formData, message: e.target.value})}
-                  />
-                </div>
-
-                <button 
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[var(--accent)] text-white py-3 rounded-lg font-bold hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center text-sm tracking-wide mt-2 shadow-lg"
-                >
-                  {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Complete Purchase →"}
-                </button>
-              </form>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center py-10 w-full max-w-md mx-auto">
-            <div className="w-16 h-16 bg-[var(--accent)] rounded-full flex items-center justify-center mx-auto mb-6 animate-[scaleIn_0.5s_ease-out]">
-               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
-            </div>
-            <h2 className="font-display text-2xl text-white font-bold mb-3 font-semibold">Order Received!</h2>
-            <p className="text-gray-400 text-sm mb-1">Check your email at <span className="text-white font-bold">{formData.email}</span></p>
-            <p className="text-gray-500 text-xs mb-8 leading-relaxed">We will deliver your download package & setup guide within 2 hours.</p>
-            <button onClick={onClose} className="text-gray-400 hover:text-white font-bold text-sm transition-colors border-b border-gray-600 hover:border-white pb-0.5">← Browse More Templates</button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // --- HOOKS ---
 
@@ -282,1477 +45,7 @@ function useIntersectionObserver() {
 
 // --- COMPONENTS ---
 
-// --- ADMIN SIDE PANEL ---
-const AdminSidePanel = ({ isOpen, onClose, data, onUpdate, products, categoriesFromDB }: { 
-  isOpen: boolean; 
-  onClose: () => void; 
-  data: any; 
-  onUpdate: (newData: any) => void;
-  products: any[];
-  categoriesFromDB: string[];
-}) => {
-  const [activeTab, setActiveTab] = useState<'netflix' | 'products' | 'settings' | 'leads' | 'howItWorks' | 'curatedSelection'>('netflix');
-  const [localData, setLocalData] = useState(data);
-  const [isSaving, setIsSaving] = useState(false);
-  const [uploadingIdx, setUploadingIdx] = useState<number | null>(null);
-  const [uploadingHowItWorks, setUploadingHowItWorks] = useState(false);
-  const [uploadingCurated, setUploadingCurated] = useState(false);
-  const [leads, setLeads] = useState<any[]>([]);
-
-  // Product CRUD states
-  const [editingProduct, setEditingProduct] = useState<any | null>(null);
-  const [isSavingProduct, setIsSavingProduct] = useState(false);
-  const [uploadingProductImg, setUploadingProductImg] = useState(false);
-  const [uploadingProductPdf, setUploadingProductPdf] = useState(false);
-  const [uploadingProductVideo, setUploadingProductVideo] = useState(false);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    setLocalData(data);
-  }, [data]);
-
-  useEffect(() => {
-    if (activeTab === 'leads') {
-        const q = query(collection(db, 'requests'), orderBy('createdAt', 'desc'));
-        const unsub = onSnapshot(q, (snapshot) => {
-            setLeads(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
-        return unsub;
-    }
-  }, [activeTab]);
-
-  const handleDeleteLead = async (id: string) => {
-    if (window.confirm('Delete this request?')) {
-        try {
-            await deleteDoc(doc(db, 'requests', id));
-        } catch (err) {
-            console.error(err);
-            alert('Delete failed');
-        }
-    }
-  };
-
-  const handleUpdateLeadStatus = async (id: string, status: string) => {
-    try {
-        await updateDoc(doc(db, 'requests', id), { status });
-    } catch (err) {
-        console.error(err);
-    }
-  };
-
-  const handleDeleteProduct = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this artifact?")) return;
-    try {
-      await deleteDoc(doc(db, 'products', id));
-      alert("Artifact deleted successfully!");
-    } catch (err: any) {
-      console.error(err);
-      alert("Failed to delete product: " + err.message);
-    }
-  };
-
-  const uploadHowItWorksImage = async (file: File) => {
-    setUploadingHowItWorks(true);
-    try {
-      const storageRef = ref(storage, `howitworks/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      setLocalData({
-        ...localData,
-        howItWorks: {
-          ...localData.howItWorks,
-          imageUrl: downloadURL
-        }
-      });
-    } catch (err) {
-      console.error('Upload failed:', err);
-      alert('Upload failed. Try again.');
-    } finally {
-      setUploadingHowItWorks(false);
-    }
-  };
-
-  const uploadCuratedImage = async (file: File) => {
-    setUploadingCurated(true);
-    try {
-      const storageRef = ref(storage, `curated/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      setLocalData({
-        ...localData,
-        curatedSelection: {
-          ...(localData.curatedSelection || {
-            subtitle: '✦ The Library',
-            title: 'Curated \n Selection.',
-            description: 'Every design is an original piece, crafted with premium typography and editorial layouts.'
-          }),
-          imageUrl: downloadURL
-        }
-      });
-    } catch (err) {
-      console.error('Upload failed:', err);
-      alert('Upload failed. Try again.');
-    } finally {
-      setUploadingCurated(false);
-    }
-  };
-
-  const handleImageUpload = async (file: File, index: number) => {
-    setUploadingIdx(index);
-    const screenshotId = localData.netflixShowcase.screenshots[index].id;
-    console.log(`Uploading image for slot: ${screenshotId}`);
-    
-    try {
-      const storageRef = ref(storage, `showcase/netflix/${Date.now()}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      
-      const newSS = [...localData.netflixShowcase.screenshots];
-      newSS[index] = { ...newSS[index], url: downloadURL };
-      setLocalData({
-        ...localData, 
-        netflixShowcase: {
-          ...localData.netflixShowcase, 
-          screenshots: newSS
-        }
-      });
-    } catch (err) {
-      console.error('Upload failed:', err);
-      alert('Upload failed. Try again.');
-    } finally {
-      setUploadingIdx(null);
-    }
-  };
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await setDoc(doc(db, 'settings', 'hero'), { ...localData, updatedAt: serverTimestamp() });
-      alert('Success! Site content synchronized across all users.');
-      onClose();
-    } catch (err) {
-      console.error(err);
-      alert('Sync Failed. Check permissions or network.');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-[1000] flex justify-end">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
-      <div className="relative w-full max-w-[480px] bg-[#0A0A0A] h-full border-l border-white/10 animate-[slideIn_0.3s_ease-out] flex flex-col">
-        <div className="p-6 border-b border-white/10 flex items-center justify-between">
-          <div>
-            <h2 className="font-display text-xl font-bold text-white">Artifact Control</h2>
-            <p className="text-[10px] font-mono text-gray-500 uppercase tracking-widest mt-1">Live CMS v1.4</p>
-          </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
-             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        <div className="flex border-b border-white/10 overflow-x-auto no-scrollbar bg-black/40">
-          {[
-            { id: 'netflix', label: 'Netflix Block' },
-            { id: 'settings', label: 'Hero & Identity' },
-            { id: 'howItWorks', label: 'How It Works' },
-            { id: 'curatedSelection', label: 'Curated Selection' },
-            { id: 'products', label: 'Artifacts' },
-            { id: 'leads', label: 'User Leads' }
-          ].map(tab => (
-            <button 
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-6 py-4 text-[10px] font-mono tracking-widest uppercase transition-all flex-shrink-0 border-b-2 ${
-                activeTab === tab.id ? 'border-[var(--accent)] text-white' : 'border-transparent text-gray-500 hover:text-gray-300'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-10 no-scrollbar pb-32">
-          {activeTab === 'howItWorks' && (
-            <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
-                <div className="space-y-4">
-                     <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">How It Works Layout</h3>
-                     <div className="space-y-2">
-                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Title (use \n for newline)</label>
-                          <textarea 
-                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none h-20 resize-none"
-                              value={localData.howItWorks.title}
-                              onChange={e => setLocalData({...localData, howItWorks: {...localData.howItWorks, title: e.target.value}})}
-                          />
-                     </div>
-                     <div className="space-y-2">
-                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Subtitle</label>
-                          <input 
-                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
-                              value={localData.howItWorks.subtitle}
-                              onChange={e => setLocalData({...localData, howItWorks: {...localData.howItWorks, subtitle: e.target.value}})}
-                          />
-                     </div>
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Image</label>
-                        <div className="flex gap-4 items-center">
-                            <div className="relative w-20 h-20 bg-black border border-white/10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
-                               {localData.howItWorks.imageUrl ? (
-                                   <img src={localData.howItWorks.imageUrl} alt="preview" className="w-full h-full object-cover"/>
-                               ) : (
-                                   <span className="text-[10px] text-gray-600 font-mono">No Image</span>
-                               )}
-                               {uploadingHowItWorks && (
-                                   <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                                       <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                                   </div>
-                               )}
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <div className="relative">
-                                    <input 
-                                        type="file"
-                                        accept="image/*"
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        onChange={e => {
-                                            const file = e.target.files?.[0];
-                                            if (file) uploadHowItWorksImage(file);
-                                        }}
-                                    />
-                                    <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-3 text-xs font-mono transition-colors text-center">
-                                        {uploadingHowItWorks ? 'Uploading...' : 'Choose Image File'}
-                                    </button>
-                                </div>
-                                <p className="text-[9px] text-gray-500 font-mono">Recommended aspect ratio: 4:5</p>
-                            </div>
-                        </div>
-                     </div>
-                </div>
-
-                <div className="space-y-4">
-                    <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Steps</h3>
-                    {localData.howItWorks.steps.map((step: any, idx: number) => (
-                        <div key={idx} className="p-4 bg-white/5 rounded-xl border border-white/5 flex gap-4">
-                            <span className="text-xl shrink-0 font-bold text-gray-400">{step.num}</span>
-                            <div className="flex-1 space-y-2">
-                                <input 
-                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-xs font-bold"
-                                    value={step.title}
-                                    placeholder="Step Title"
-                                    onChange={e => {
-                                        const newS = [...localData.howItWorks.steps];
-                                        newS[idx].title = e.target.value;
-                                        setLocalData({...localData, howItWorks: {...localData.howItWorks, steps: newS}});
-                                    }}
-                                />
-                                <textarea 
-                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-[11px] opacity-60 h-16 resize-none"
-                                    placeholder="Step Description"
-                                    value={step.desc}
-                                    onChange={e => {
-                                        const newS = [...localData.howItWorks.steps];
-                                        newS[idx].desc = e.target.value;
-                                        setLocalData({...localData, howItWorks: {...localData.howItWorks, steps: newS}});
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-          )}
-
-          {activeTab === 'curatedSelection' && (
-            <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
-                <div className="space-y-4">
-                     <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Curated Selection Layout</h3>
-                     
-                     <div className="space-y-2">
-                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Overline</label>
-                          <input 
-                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
-                              value={localData.curatedSelection?.subtitle || ''}
-                              onChange={e => setLocalData({...localData, curatedSelection: {...(localData.curatedSelection || {}), subtitle: e.target.value}})}
-                          />
-                     </div>
-
-                     <div className="space-y-2">
-                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Title (use \n for newline)</label>
-                          <textarea 
-                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none h-20 resize-none"
-                              value={localData.curatedSelection?.title || ''}
-                              onChange={e => setLocalData({...localData, curatedSelection: {...(localData.curatedSelection || {}), title: e.target.value}})}
-                          />
-                     </div>
-
-                     <div className="space-y-2">
-                          <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Description</label>
-                          <textarea 
-                              className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none h-24 resize-none"
-                              value={localData.curatedSelection?.description || ''}
-                              onChange={e => setLocalData({...localData, curatedSelection: {...(localData.curatedSelection || {}), description: e.target.value}})}
-                          />
-                     </div>
-
-                     <div className="space-y-2">
-                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Section Image</label>
-                        <div className="flex gap-4 items-center">
-                            <div className="relative w-20 h-20 bg-black border border-white/10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
-                               {localData.curatedSelection?.imageUrl ? (
-                                   <img src={localData.curatedSelection.imageUrl} alt="preview" className="w-full h-full object-cover"/>
-                               ) : (
-                                   <span className="text-[10px] text-gray-600 font-mono">No Image</span>
-                               )}
-                               {uploadingCurated && (
-                                   <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                                       <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                                   </div>
-                               )}
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <div className="relative">
-                                    <input 
-                                        type="file"
-                                        accept="image/*"
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        onChange={e => {
-                                            const file = e.target.files?.[0];
-                                            if (file) uploadCuratedImage(file);
-                                        }}
-                                    />
-                                    <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-3 text-xs font-mono transition-colors text-center">
-                                        {uploadingCurated ? 'Uploading...' : 'Choose Image File'}
-                                    </button>
-                                </div>
-                                <p className="text-[9px] text-gray-500 font-mono">Recommended aspect ratio: square/rect</p>
-                            </div>
-                        </div>
-                     </div>
-                </div>
-            </div>
-          )}
-
-          {activeTab === 'netflix' && (
-            <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
-              <div className="space-y-4">
-                <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Main Banner</h3>
-                <div className="space-y-4">
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Main Heading</label>
-                        <input 
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)] transition-all"
-                            value={localData.netflixShowcase.title}
-                            onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, title: e.target.value}})}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Description Content</label>
-                        <textarea 
-                            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)] h-28 resize-none"
-                            value={localData.netflixShowcase.subtitle}
-                            onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, subtitle: e.target.value}})}
-                        />
-                    </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Promo Price</label>
-                    <input 
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                      value={localData.netflixShowcase.price}
-                      onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, price: e.target.value}})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Strike Price</label>
-                    <input 
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                      value={localData.netflixShowcase.originalPrice}
-                      onChange={e => setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, originalPrice: e.target.value}})}
-                    />
-                  </div>
-              </div>
-
-              <div className="space-y-4">
-                  <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Key Features</h3>
-                  <div className="space-y-4">
-                    {localData.netflixShowcase.features.map((feat: any, idx: number) => (
-                        <div key={idx} className="p-4 bg-white/5 rounded-xl border border-white/5 flex gap-4">
-                            <input 
-                                className="w-10 bg-black border border-white/10 rounded text-center text-xl shrink-0"
-                                value={feat.emoji}
-                                onChange={e => {
-                                    const newF = [...localData.netflixShowcase.features];
-                                    newF[idx].emoji = e.target.value;
-                                    setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, features: newF}});
-                                }}
-                            />
-                            <div className="flex-1 space-y-2">
-                                <input 
-                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-xs font-bold"
-                                    placeholder="Title"
-                                    value={feat.title}
-                                    onChange={e => {
-                                        const newF = [...localData.netflixShowcase.features];
-                                        newF[idx].title = e.target.value;
-                                        setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, features: newF}});
-                                    }}
-                                />
-                                <input 
-                                    className="w-full bg-black border border-white/10 rounded px-3 py-1.5 text-white text-[11px] opacity-60"
-                                    placeholder="Description"
-                                    value={feat.desc}
-                                    onChange={e => {
-                                        const newF = [...localData.netflixShowcase.features];
-                                        newF[idx].desc = e.target.value;
-                                        setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, features: newF}});
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    ))}
-                  </div>
-              </div>
-              
-              <div className="space-y-4">
-                  <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Visual Gallery</h3>
-                  <div className="grid grid-cols-1 gap-4">
-                      {localData.netflixShowcase.screenshots.map((ss: any, idx: number) => (
-                        <div key={ss.id} className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-3 group/ss">
-                           <div className="flex justify-between items-center mb-1">
-                              <span className="text-[9px] font-mono text-white/40 uppercase">Grid Slot: {ss.size}</span>
-                              <div className="w-10 h-10 rounded-lg shrink-0 bg-cover bg-center border border-white/20 shadow-lg" style={{ backgroundImage: `url(${ss.url})` }} />
-                           </div>
-                           
-                           <div className="space-y-2">
-                                <label className="text-[9px] text-gray-500 uppercase tracking-widest font-mono block">Image Artifact</label>
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <input 
-                                            type="file"
-                                            accept="image/*"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                            onChange={e => {
-                                                const file = e.target.files?.[0];
-                                                if (file) handleImageUpload(file, idx);
-                                            }}
-                                        />
-                                        <div className={`w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-white text-[11px] flex items-center gap-2 transition-colors ${uploadingIdx === idx ? 'opacity-50' : 'hover:border-[var(--accent)]'}`}>
-                                            {uploadingIdx === idx ? (
-                                                <div className="w-3 h-3 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin shrink-0" />
-                                            ) : (
-                                                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                                            )}
-                                            <span className="truncate">{uploadingIdx === idx ? 'Uploading Artifact...' : (ss.url ? 'Change Artifact' : 'Upload Artifact')}</span>
-                                        </div>
-                                    </div>
-                                    {ss.url && (
-                                        <button 
-                                            onClick={() => window.open(ss.url, '_blank')}
-                                            className="p-2.5 bg-white/5 border border-white/10 rounded-lg text-gray-500 hover:text-white"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                        </button>
-                                    )}
-                                </div>
-                           </div>
-
-                           <div className="space-y-2">
-                                <label className="text-[9px] text-gray-500 uppercase tracking-widest font-mono block">Hover Caption</label>
-                                <input 
-                                    className="w-full bg-black border border-white/10 rounded-lg px-4 py-2.5 text-white text-[11px] outline-none focus:border-[var(--accent)] transition-all"
-                                    value={ss.label}
-                                    onChange={e => {
-                                        const newSS = [...localData.netflixShowcase.screenshots];
-                                        newSS[idx].label = e.target.value;
-                                        setLocalData({...localData, netflixShowcase: {...localData.netflixShowcase, screenshots: newSS}});
-                                    }}
-                                />
-                           </div>
-                        </div>
-                      ))}
-                  </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'settings' && (
-             <div className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
-                 <div className="space-y-4">
-                    <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Brand & Theme</h3>
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Site Name</label>
-                            <input 
-                                className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-sm outline-none"
-                                value={localData.siteName}
-                                onChange={e => setLocalData({...localData, siteName: e.target.value})}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Interface Accent Color</label>
-                            <div className="flex gap-3 items-center">
-                                <div className="w-12 h-12 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: localData.accentColor }} />
-                                <input 
-                                    className="flex-1 bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-xs font-mono outline-none"
-                                    value={localData.accentColor}
-                                    onChange={e => setLocalData({...localData, accentColor: e.target.value.toUpperCase()})}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                 </div>
-
-                 <div className="space-y-4">
-                    <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Hero Copy</h3>
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Floating Tagline</label>
-                            <input 
-                                className="w-full bg-white/5 border border-white/10 rounded px-4 py-2 text-white text-xs"
-                                value={localData.heroTagline}
-                                onChange={e => setLocalData({...localData, heroTagline: e.target.value})}
-                            />
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                            {['Part 1', 'Part 2', 'Part 3'].map((p, i) => (
-                                <input 
-                                    key={i}
-                                    className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-[11px] outline-none"
-                                    value={(localData as any)[`heroTitlePart${i+1}`]}
-                                    onChange={e => setLocalData({...localData, [`heroTitlePart${i+1}`]: e.target.value})}
-                                />
-                            ))}
-                        </div>
-                        <textarea 
-                            className="w-full bg-white/5 border border-white/10 rounded px-4 py-3 text-white text-xs h-24 resize-none"
-                            value={localData.heroDescription}
-                            onChange={e => setLocalData({...localData, heroDescription: e.target.value})}
-                        />
-                    </div>
-                 </div>
-
-                 <div className="space-y-4">
-                    <h3 className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] font-bold border-b border-white/10 pb-2">Platform Metrics</h3>
-                    <div className="space-y-3">
-                        {localData.stats.map((stat: any, i: number) => (
-                            <div key={i} className="flex gap-2">
-                                <input 
-                                    className="w-1/3 bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-[11px] font-bold"
-                                    value={stat.number}
-                                    onChange={e => {
-                                        const newS = [...localData.stats];
-                                        newS[i].number = e.target.value;
-                                        setLocalData({...localData, stats: newS});
-                                    }}
-                                />
-                                <input 
-                                    className="w-2/3 bg-white/5 border border-white/10 rounded px-3 py-2 text-white text-[11px]"
-                                    value={stat.label}
-                                    onChange={e => {
-                                        const newS = [...localData.stats];
-                                        newS[i].label = e.target.value;
-                                        setLocalData({...localData, stats: newS});
-                                    }}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                 </div>
-             </div>
-          )}
-
-          {activeTab === 'products' && (
-            <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
-                <div className="flex justify-between items-center border-b border-white/10 pb-4">
-                    <h3 className="text-sm font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">
-                        {editingProduct ? (editingProduct.id ? 'Edit Artifact' : 'New Artifact') : 'Manage Artifacts'}
-                    </h3>
-                    {!editingProduct ? (
-                        <button 
-                            onClick={() => setEditingProduct({
-                                type: 'site',
-                                category: categoriesFromDB[0] || 'Anniversary',
-                                title: '',
-                                desc: '',
-                                price: 'FREE',
-                                original: '₹999',
-                                seed: Math.floor(Math.random() * 1000),
-                                isNew: true,
-                                isBest: false,
-                                whatsInside: ['High-fidelity design font', 'Fully customizable structure', 'Interactive animations'],
-                                imageUrl: '',
-                                pdfUrl: '',
-                                videoUrl: ''
-                            })}
-                            className="bg-white text-black px-4 py-2 rounded-xl text-xs font-mono tracking-widest uppercase font-bold hover:bg-[var(--accent)] hover:text-white transition-colors cursor-pointer"
-                        >
-                            + Create New
-                        </button>
-                    ) : (
-                        <button 
-                            onClick={() => setEditingProduct(null)}
-                            className="text-gray-400 hover:text-white text-xs font-mono tracking-widest uppercase cursor-pointer"
-                        >
-                            ← Back to List
-                        </button>
-                    )}
-                </div>
-
-                {editingProduct ? (
-                    <div className="space-y-5">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Type</label>
-                                <select 
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                                    value={editingProduct.type}
-                                    onChange={e => setEditingProduct({...editingProduct, type: e.target.value})}
-                                >
-                                    <option value="site" className="bg-black text-white">Website (Interactive)</option>
-                                    <option value="pdf" className="bg-black text-white">PDF (Printable)</option>
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Category</label>
-                                <select
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                                    value={editingProduct.category}
-                                    onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}
-                                >
-                                    {categoriesFromDB.map((cat: string) => (
-                                        <option key={cat} value={cat} className="bg-black text-white">{cat}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Title</label>
-                            <input 
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                                value={editingProduct.title}
-                                onChange={e => setEditingProduct({...editingProduct, title: e.target.value})}
-                                placeholder="Netflix Inspired..."
-                            />
-                        </div>
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Description</label>
-                            <textarea 
-                                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)] h-24 resize-none"
-                                value={editingProduct.desc}
-                                onChange={e => setEditingProduct({...editingProduct, desc: e.target.value})}
-                                placeholder="Describe the template..."
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Promo Price</label>
-                                <input 
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                                    value={editingProduct.price}
-                                    onChange={e => setEditingProduct({...editingProduct, price: e.target.value})}
-                                    placeholder="FREE"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Strike Price</label>
-                                <input 
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                                    value={editingProduct.original || ''}
-                                    onChange={e => setEditingProduct({...editingProduct, original: e.target.value})}
-                                    placeholder="₹999"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2 col-span-1">
-                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest">Seed ID</label>
-                                <input 
-                                    type="number"
-                                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-white text-sm outline-none focus:border-[var(--accent)]"
-                                    value={editingProduct.seed}
-                                    onChange={e => setEditingProduct({...editingProduct, seed: parseInt(e.target.value) || 0})}
-                                />
-                            </div>
-                            <div className="space-y-2 col-span-1 flex flex-col justify-end pb-3">
-                                <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-gray-400 uppercase">
-                                    <input 
-                                        type="checkbox" 
-                                        className="accent-[var(--accent)]"
-                                        checked={editingProduct.isNew}
-                                        onChange={e => setEditingProduct({...editingProduct, isNew: e.target.checked})}
-                                    />
-                                    Is New
-                                </label>
-                            </div>
-                            <div className="space-y-2 col-span-1 flex flex-col justify-end pb-3">
-                                <label className="flex items-center gap-2 cursor-pointer text-xs font-mono text-gray-400 uppercase">
-                                    <input 
-                                        type="checkbox" 
-                                        className="accent-[var(--accent)]"
-                                        checked={editingProduct.isBest}
-                                        onChange={e => setEditingProduct({...editingProduct, isBest: e.target.checked})}
-                                    />
-                                    Is Featured
-                                </label>
-                            </div>
-                        </div>
-
-                        {/* Cover Image */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">Cover Image</label>
-                            <div className="flex gap-4 items-center">
-                                <div className="relative w-16 h-20 bg-black border border-white/10 rounded overflow-hidden flex-shrink-0 flex items-center justify-center">
-                                    {editingProduct.imageUrl ? (
-                                        <img src={editingProduct.imageUrl} alt="preview" className="w-full h-full object-cover"/>
-                                    ) : (
-                                        <span className="text-[9px] text-gray-600 font-mono text-center px-1">No Image</span>
-                                    )}
-                                    {uploadingProductImg && (
-                                        <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                                            <div className="w-4 h-4 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="relative">
-                                        <input 
-                                            type="file"
-                                            accept="image/*"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                            onChange={e => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    setUploadingProductImg(true);
-                                                    const storageRef = ref(storage, `products/images/${Date.now()}_${file.name}`);
-                                                    uploadBytes(storageRef, file).then(snap => getDownloadURL(snap.ref)).then(url => {
-                                                        setEditingProduct(prev => ({ ...prev, imageUrl: url }));
-                                                    }).catch(err => {
-                                                        console.error(err);
-                                                        alert("Image upload failed");
-                                                    }).finally(() => {
-                                                        setUploadingProductImg(false);
-                                                    });
-                                                }
-                                            }}
-                                        />
-                                        <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-2.5 text-xs font-mono transition-colors text-center cursor-pointer">
-                                            {uploadingProductImg ? 'Uploading cover...' : 'Choose Cover Image'}
-                                        </button>
-                                    </div>
-                                    <p className="text-[9px] text-gray-500 font-mono mt-1">aspect ratio 3:4 (card style)</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* PDF (ONLY FOR PDF) */}
-                        {editingProduct.type === 'pdf' && (
-                            <div className="space-y-2 bg-[#161616]/40 p-4 rounded-xl border border-white/5">
-                                <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block font-bold text-[var(--accent)]">PDF Document</label>
-                                <div className="space-y-3">
-                                    <input 
-                                        type="text"
-                                        className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[var(--accent)]"
-                                        placeholder="Paste manual Google Docs / PDF url..."
-                                        value={editingProduct.pdfUrl || ''}
-                                        onChange={e => setEditingProduct({...editingProduct, pdfUrl: e.target.value})}
-                                    />
-                                    <div className="relative">
-                                        <input 
-                                            type="file"
-                                            accept="application/pdf"
-                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                            onChange={e => {
-                                                const file = e.target.files?.[0];
-                                                if (file) {
-                                                    setUploadingProductPdf(true);
-                                                    const storageRef = ref(storage, `products/pdfs/${Date.now()}_${file.name}`);
-                                                    uploadBytes(storageRef, file).then(snap => getDownloadURL(snap.ref)).then(url => {
-                                                        setEditingProduct(prev => ({ ...prev, pdfUrl: url }));
-                                                    }).catch(err => {
-                                                        console.error(err);
-                                                        alert("PDF upload failed");
-                                                    }).finally(() => {
-                                                        setUploadingProductPdf(false);
-                                                    });
-                                                }
-                                            }}
-                                        />
-                                        <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-2.5 text-xs font-mono transition-all text-center flex items-center justify-center gap-2 cursor-pointer">
-                                            {uploadingProductPdf ? (
-                                                <div className="w-3.5 h-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                                            ) : (
-                                                '📤'
-                                            )}
-                                            {uploadingProductPdf ? 'Uploading PDF doc...' : 'Upload PDF Document'}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Video (WALKTHROUGH TOUR FOR PRODUCT) */}
-                        <div className="space-y-2 bg-[#161616]/40 p-4 rounded-xl border border-white/5">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block font-bold text-[var(--accent)]">Walkthrough / Demo Video</label>
-                            <div className="space-y-3">
-                                <input 
-                                    type="text"
-                                    className="w-full bg-black border border-white/10 rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-[var(--accent)]"
-                                    placeholder="Paste YouTube or custom video URL..."
-                                    value={editingProduct.videoUrl || ''}
-                                    onChange={e => setEditingProduct({...editingProduct, videoUrl: e.target.value})}
-                                />
-                                <div className="relative">
-                                    <input 
-                                        type="file"
-                                        accept="video/*"
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                        onChange={e => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                                setUploadingProductVideo(true);
-                                                const storageRef = ref(storage, `products/videos/${Date.now()}_${file.name}`);
-                                                uploadBytes(storageRef, file).then(snap => getDownloadURL(snap.ref)).then(url => {
-                                                    setEditingProduct(prev => ({ ...prev, videoUrl: url }));
-                                                }).catch(err => {
-                                                    console.error(err);
-                                                    alert("Video upload failed");
-                                                }).finally(() => {
-                                                    setUploadingProductVideo(false);
-                                                });
-                                            }
-                                        }}
-                                    />
-                                    <button className="w-full bg-white/5 border border-white/10 text-white hover:border-[var(--accent)] rounded px-4 py-2.5 text-xs font-mono transition-all text-center flex items-center justify-center gap-2 cursor-pointer">
-                                        {uploadingProductVideo ? (
-                                            <div className="w-3.5 h-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-                                        ) : (
-                                            '🎥'
-                                        )}
-                                        {uploadingProductVideo ? 'Uploading video walkthrough...' : 'Upload Video Walkthrough'}
-                                    </button>
-                                </div>
-                                {editingProduct.videoUrl && (
-                                    <div className="mt-2 p-2 bg-black/40 border border-white/5 rounded text-[11px] text-gray-400 flex items-center justify-between">
-                                        <span className="truncate flex-1 pr-4">{editingProduct.videoUrl}</span>
-                                        <button 
-                                            onClick={() => setEditingProduct({...editingProduct, videoUrl: ''})}
-                                            className="text-red-500 hover:text-red-400 px-2 py-0.5 font-bold cursor-pointer"
-                                        >
-                                            Delete Video
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* What's Inside */}
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">What's Inside Features</label>
-                            <div className="flex gap-2">
-                                <input 
-                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white text-xs outline-none focus:border-[var(--accent)]"
-                                    placeholder="Add bullet point, e.g. Fully responsive code"
-                                    id="new-bullet-input"
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            const input = e.currentTarget;
-                                            const newBullet = input.value.trim();
-                                            if (newBullet && editingProduct.whatsInside) {
-                                                setEditingProduct({
-                                                    ...editingProduct,
-                                                    whatsInside: [...editingProduct.whatsInside, newBullet]
-                                                });
-                                                input.value = '';
-                                            }
-                                        }
-                                    }}
-                                />
-                                <button
-                                    onClick={() => {
-                                        const input = document.getElementById('new-bullet-input') as HTMLInputElement;
-                                        const newBullet = input?.value.trim();
-                                        if (newBullet && editingProduct.whatsInside) {
-                                            setEditingProduct({
-                                                ...editingProduct,
-                                                whatsInside: [...editingProduct.whatsInside, newBullet]
-                                            });
-                                            input.value = '';
-                                        }
-                                    }}
-                                    className="bg-white/5 border border-white/10 hover:border-[var(--accent)] px-4 rounded-lg text-white font-mono text-xs font-bold cursor-pointer"
-                                >
-                                    Add
-                                </button>
-                            </div>
-                            <div className="flex flex-wrap gap-2 pt-2">
-                                {editingProduct.whatsInside && editingProduct.whatsInside.map((item: string, idx: number) => (
-                                    <div key={idx} className="bg-white/40 text-white text-[11px] px-3 py-1 rounded-full border border-white/10 flex items-center gap-2">
-                                        <span>{item}</span>
-                                        <button 
-                                            onClick={() => {
-                                                const list = [...editingProduct.whatsInside];
-                                                list.splice(idx, 1);
-                                                setEditingProduct({...editingProduct, whatsInside: list});
-                                            }}
-                                            className="text-red-500 hover:text-red-400 font-bold"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Save Actions */}
-                        <div className="flex gap-3 pt-4 border-t border-white/5">
-                            <button 
-                                onClick={() => setEditingProduct(null)}
-                                className="flex-1 border border-white/10 hover:border-white/20 text-gray-400 hover:text-white py-3 rounded-xl text-xs font-mono tracking-widest uppercase cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                onClick={async () => {
-                                    if (!editingProduct.title || !editingProduct.desc) {
-                                        alert("Title and Description are required");
-                                        return;
-                                    }
-                                    setIsSavingProduct(true);
-                                    try {
-                                        const payload = {
-                                            type: editingProduct.type,
-                                            category: editingProduct.category,
-                                            title: editingProduct.title,
-                                            desc: editingProduct.desc,
-                                            price: editingProduct.price || 'FREE',
-                                            original: editingProduct.original || '₹999',
-                                            seed: editingProduct.seed || Math.floor(Math.random() * 1000),
-                                            isNew: !!editingProduct.isNew,
-                                            isBest: !!editingProduct.isBest,
-                                            imageUrl: editingProduct.imageUrl || '',
-                                            whatsInside: editingProduct.whatsInside || [],
-                                            updatedAt: serverTimestamp()
-                                        } as any;
-
-                                        payload.pdfUrl = editingProduct.pdfUrl || '';
-                                        payload.videoUrl = editingProduct.videoUrl || '';
-
-                                        if (editingProduct.id) {
-                                            await updateDoc(doc(db, 'products', editingProduct.id), payload);
-                                            alert("Artifact updated successfully!");
-                                        } else {
-                                            payload.createdAt = serverTimestamp();
-                                            await addDoc(collection(db, 'products'), payload);
-                                            alert("New artifact created successfully!");
-                                        }
-                                        setEditingProduct(null);
-                                    } catch (err: any) {
-                                        console.error(err);
-                                        alert("Failed to save product: " + err.message);
-                                    } finally {
-                                        setIsSavingProduct(false);
-                                    }
-                                }}
-                                disabled={isSavingProduct || uploadingProductImg || uploadingProductPdf || uploadingProductVideo}
-                                className="flex-1 bg-[var(--accent)] hover:brightness-110 text-white py-3 rounded-xl text-xs font-mono tracking-widest font-black uppercase flex items-center justify-center gap-2 cursor-pointer"
-                            >
-                                {isSavingProduct ? (
-                                    <div className="w-4 h-4 border-2 border-white/25 border-t-white rounded-full animate-spin" />
-                                ) : (
-                                    'Save Artifact'
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    /* PRODUCTS LIST */
-                    <div className="space-y-4">
-                        {products && products.length === 0 ? (
-                            <div className="p-12 text-center text-gray-600 text-xs font-mono uppercase tracking-widest border border-dashed border-white/10 rounded-2xl">
-                                No artifacts standardly loaded
-                            </div>
-                        ) : (
-                            products && products.map((product: any) => (
-                                <div key={product.id} className="p-4 bg-white/5 border border-white/10 rounded-2xl flex gap-4 items-center group">
-                                    <div className="w-12 h-16 rounded overflow-hidden shrink-0 border border-white/10 bg-black flex items-center justify-center relative">
-                                        {product.imageUrl ? (
-                                            <img src={product.imageUrl} alt={product.title} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <span className="text-[10px] text-gray-700 font-mono">Cover</span>
-                                        )}
-                                        <div className={`absolute top-0.5 left-0.5 px-1 py-[1px] text-[7px] font-mono font-bold rounded ${
-                                            product.type === 'pdf' ? 'bg-[#FFD60A] text-black' : 'bg-[#FF3B3B] text-white'
-                                        }`}>
-                                            {product.type.toUpperCase()}
-                                        </div>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="text-white text-xs font-bold truncate group-hover:text-[var(--accent)] transition-colors">{product.title}</h4>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                            <span className="text-[9px] font-mono text-[#FF3B3B] uppercase">{product.category}</span>
-                                            <span className="text-gray-600 text-[9px] font-mono">•</span>
-                                            <span className="text-[9px] font-mono text-gray-500">{product.price} ({product.original || '₹999'})</span>
-                                        </div>
-                                        {product.type === 'site' && (
-                                            <div className="text-[8px] font-mono text-gray-400 mt-1 truncate">
-                                                {product.videoUrl ? `🎥 Walkthrough Video set` : `⚠️ No Walkthrough Video`}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button 
-                                            onClick={() => setEditingProduct({ ...product })}
-                                            className="p-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all cursor-pointer"
-                                            title="Edit Artifact"
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button 
-                                            onClick={() => handleDeleteProduct(product.id)}
-                                            className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-all cursor-pointer"
-                                            title="Delete Artifact"
-                                        >
-                                            🗑️
-                                        </button>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                )}
-            </div>
-          )}
-
-          {activeTab === 'leads' && (
-            <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
-                <h3 className="text-[11px] font-mono text-[var(--accent)] uppercase tracking-[0.2em] font-bold">Incoming Requests</h3>
-                <div className="space-y-4">
-                    {leads.length === 0 ? (
-                        <div className="p-12 text-center text-gray-600 text-xs font-mono uppercase tracking-widest border border-dashed border-white/10 rounded-2xl">
-                            Queue is empty
-                        </div>
-                    ) : (
-                        leads.map(lead => (
-                            <div key={lead.id} className="p-5 bg-white/5 border border-white/10 rounded-2xl space-y-4">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h4 className="text-white font-bold text-sm">{lead.name}</h4>
-                                        <p className="text-[10px] text-gray-500 font-mono mt-0.5">{lead.email}</p>
-                                        <p className="text-[10px] text-gray-500 font-mono">{lead.phone}</p>
-                                    </div>
-                                    <button 
-                                        onClick={() => handleDeleteLead(lead.id)}
-                                        className="p-2 text-gray-600 hover:text-red-500 transition-colors"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 pb-3 border-b border-white/5">
-                                    <div className="space-y-1">
-                                        <span className="text-[9px] text-gray-600 uppercase font-mono">Occasion</span>
-                                        <p className="text-[11px] text-gray-300">{lead.occasion}</p>
-                                    </div>
-                                    <div className="space-y-1 text-right">
-                                        <span className="text-[9px] text-gray-600 uppercase font-mono">Artifact</span>
-                                        <p className="text-[11px] text-[var(--accent)] font-bold">{lead.productTitle}</p>
-                                    </div>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[9px] text-gray-600 font-mono uppercase">{new Date(lead.createdAt?.toDate()).toLocaleDateString()}</span>
-                                    <select 
-                                        className="bg-black border border-white/10 rounded-lg text-[9px] uppercase font-mono px-2 py-1 outline-none text-gray-400 focus:text-white"
-                                        value={lead.status || 'pending'}
-                                        onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
-                                    >
-                                        <option value="pending">Pending</option>
-                                        <option value="contacted">Contacted</option>
-                                        <option value="delivered">Delivered</option>
-                                    </select>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-          )}
-        </div>
-
-        <div className="p-6 border-t border-white/10 bg-[#0A0A0A] flex items-center justify-between shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-           <div className="flex flex-col">
-              <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">Status</span>
-              <span className="text-[9px] font-mono text-green-500 uppercase tracking-widest font-bold">Online & Validated</span>
-           </div>
-           <div className="flex gap-3">
-              <button disabled={isSaving} onClick={onClose} className="px-6 py-2.5 text-xs font-mono tracking-widest uppercase text-gray-400 hover:text-white transition-colors">Abort</button>
-              <button 
-                onClick={handleSave}
-                disabled={isSaving}
-                className="bg-[var(--accent)] text-white px-8 py-3 rounded-xl text-xs font-mono tracking-[0.2em] uppercase font-black hover:brightness-110 active:scale-95 transition-all flex items-center gap-2"
-              >
-                {isSaving ? <div className="w-3 h-3 border-2 border-white/20 border-t-white rounded-full animate-spin" /> : "Deploy Changes"}
-              </button>
-           </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const VideoPlayer = ({ url }: { url: string }) => {
-  if (!url) return null;
-  const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
-  if (isYouTube) {
-    let embedUrl = url;
-    if (url.includes('youtu.be/')) {
-        const id = url.split('youtu.be/')[1]?.split('?')[0];
-        embedUrl = `https://www.youtube.com/embed/${id}?autoplay=1`;
-    } else if (url.includes('v=')) {
-        const id = url.split('v=')[1]?.split('&')[0];
-        embedUrl = `https://www.youtube.com/embed/${id}?autoplay=1`;
-    } else if (url.includes('embed/')) {
-        embedUrl = url;
-    }
-    return (
-      <div className="w-full h-[320px] md:h-[480px] bg-black rounded-lg overflow-hidden shadow-2xl relative">
-        <iframe 
-          src={embedUrl}
-          className="w-full h-full border-0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          title="Video Walkthrough"
-        />
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full bg-black rounded-lg overflow-hidden shadow-2xl relative">
-      <video 
-        src={url}
-        controls
-        autoPlay
-        playsInline
-        className="w-full h-full max-h-[600px] object-contain"
-      />
-    </div>
-  );
-};
-
-const PreviewModal: React.FC<{ product: any, onClose: () => void, onSave: () => void }> = ({ product, onClose, onSave }) => {
-  const isNetflix = product.type === 'site' && product.title.toLowerCase().includes('netflix');
-  const [activeMediaTab, setActiveMediaTab] = useState<'preview' | 'video'>(
-    product.type === 'pdf' && product.pdfUrl ? 'preview' : 'video'
-  );
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleEsc);
-    document.body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = '';
-    };
-  }, [onClose]);
-
-  return (
-    <div 
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 md:p-10 bg-black/95 backdrop-blur-md transition-all duration-300"
-      onClick={onClose}
-    >
-      <div 
-        className="relative bg-[#111] border border-[#2A2A2A] rounded-2xl w-full max-w-6xl h-auto max-h-[92vh] md:h-[90vh] overflow-y-auto md:overflow-hidden flex flex-col md:flex-row animate-[modalEnter_0.4s_ease-out]"
-        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      >
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 z-[10] p-2 rounded-full bg-black/50 text-white hover:bg-white/10 transition-colors"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        {/* Preview Area */}
-        <div className="w-full md:flex-1 min-h-[300px] md:min-h-0 overflow-y-visible md:overflow-y-auto no-scrollbar bg-[#0A0A0A] p-4 md:p-12 order-1 md:order-1">
-          <div className="max-w-3xl mx-auto space-y-8 md:space-y-12">
-            {product.type === 'pdf' ? (
-              <div className="space-y-6">
-                {product.pdfUrl && product.videoUrl && (
-                  <div className="flex justify-center border-b border-white/5 pb-4 gap-2">
-                    <button 
-                      onClick={() => setActiveMediaTab('preview')}
-                      className={`px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeMediaTab === 'preview' 
-                          ? 'bg-white text-black font-black' 
-                          : 'text-gray-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      📄 Interactive Document
-                    </button>
-                    <button 
-                      onClick={() => setActiveMediaTab('video')}
-                      className={`px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer ${
-                        activeMediaTab === 'video' 
-                          ? 'bg-white text-black font-black' 
-                          : 'text-gray-400 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      🎥 Video Walkthrough Tour
-                    </button>
-                  </div>
-                )}
-
-                {activeMediaTab === 'preview' && product.pdfUrl ? (
-                  <div className="flex flex-col gap-4">
-                    <div 
-                        className="w-full h-[500px] md:h-[800px] bg-white rounded-lg overflow-hidden shadow-2xl relative select-none"
-                        onContextMenu={(e) => e.preventDefault()}
-                    >
-                      <iframe 
-                        src={`https://docs.google.com/viewer?url=${encodeURIComponent(product.pdfUrl)}&embedded=true`}
-                        className="w-full h-full border-0"
-                        title="PDF Preview"
-                      />
-                      <div className="absolute bottom-2 left-2 text-[8px] text-gray-500 opacity-50 z-20 pointer-events-none">
-                        Preview only. Unauthorized reproduction prohibited.
-                      </div>
-                    </div>
-                  </div>
-                ) : product.videoUrl ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                       <span className="text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest font-black flex items-center gap-2">
-                         🎥 Walkthrough Video Playback
-                       </span>
-                    </div>
-                    <VideoPlayer url={product.videoUrl} />
-                  </div>
-                ) : (
-                  <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
-                    {product.imageUrl ? (
-                      <img 
-                        src={product.imageUrl} 
-                        className="w-full rounded-lg shadow-[0_45px_90px_rgba(0,0,0,0.8)]"
-                        alt={product.title}
-                      />
-                    ) : (
-                      <div className="w-full aspect-[3/4] bg-[#111] rounded-lg animate-pulse flex items-center justify-center text-gray-700 font-mono text-xs uppercase">No Image Artifact</div>
-                    )}
-                    <div className="bg-[#161616] p-8 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center">
-                      <span className="text-4xl mb-4">🎥</span>
-                      <h3 className="text-white text-lg font-bold mb-2">Video Walkthrough Coming Soon</h3>
-                      <p className="text-gray-500 text-sm max-w-md">Our walkthrough showcase or demo walkthrough video for this website template is currently being curated. Enjoy the details!</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : product.type === 'site' ? (
-              <div className="space-y-6 animate-[fadeIn_0.3s_ease-out]">
-                {product.videoUrl ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                       <span className="text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest font-black flex items-center gap-2">
-                         🎥 Walkthrough Video Playback
-                       </span>
-                    </div>
-                    <VideoPlayer url={product.videoUrl} />
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {product.imageUrl ? (
-                      <img 
-                        src={product.imageUrl} 
-                        className="w-full rounded-lg shadow-[0_45px_90px_rgba(0,0,0,0.8)]"
-                        alt={product.title}
-                      />
-                    ) : (
-                      <div className="w-full aspect-[3/4] bg-[#111] rounded-lg animate-pulse flex items-center justify-center text-gray-700 font-mono text-xs uppercase">No Image Artifact</div>
-                    )}
-                    <div className="bg-[#161616] p-8 rounded-lg border border-white/5 flex flex-col items-center justify-center text-center">
-                      <span className="text-4xl mb-4">🎥</span>
-                      <h3 className="text-white text-lg font-bold mb-2">Video Walkthrough Coming Soon</h3>
-                      <p className="text-gray-500 text-sm max-w-md">Our walkthrough showcase or demo walkthrough video for this website template is currently being curated. Enjoy the details!</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : product.imageUrl ? (
-              <img 
-                src={product.imageUrl} 
-                className="w-full rounded-lg shadow-[0_40px_80px_rgba(0,0,0,0.8)]"
-                alt={product.title}
-              />
-            ) : (
-                <div className="w-full aspect-[3/4] bg-[#111] rounded-lg animate-pulse flex items-center justify-center text-gray-700 font-mono text-xs uppercase">No Image Artifact</div>
-            )}
-          </div>
-        </div>
-
-        {/* Info Sidebar */}
-        <div className="w-full md:w-[400px] bg-[#161616] border-l border-[#2A2A2A] p-4 md:p-10 flex flex-col shrink-0 order-2 md:overflow-y-auto">
-          <div className="mb-6 md:mb-10">
-            <span className="font-mono text-[9px] text-[#FF3B3B] tracking-[0.3em] uppercase mb-2 block font-bold">{product.category}</span>
-            <h2 className="font-display text-2xl md:text-4xl font-bold text-white mb-4 leading-tight">{product.title}</h2>
-            <div className="flex items-center gap-3">
-              <span className={`px-2 py-0.5 text-[9px] font-mono font-medium rounded-full ${
-                product.type === 'pdf' ? 'bg-[#FFD60A] text-black' : 'bg-[#FF3B3B] text-white'
-              }`}>
-                {product.type.toUpperCase()}
-              </span>
-              <span className="text-green-500 text-[10px] font-bold uppercase tracking-widest">Available</span>
-            </div>
-          </div>
-
-          <div className="space-y-6 mb-8">
-            <div>
-              <h4 className="text-white text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">About this Template</h4>
-              <p className="text-[#888] text-xs leading-relaxed whitespace-pre-wrap">{product.desc}</p>
-            </div>
-
-            <div>
-              <h4 className="text-white text-[10px] font-bold uppercase tracking-widest mb-2 opacity-50">What's Inside</h4>
-              <ul className="text-[#888] text-sm space-y-3">
-                {(product.whatsInside && product.whatsInside.length > 0 ? product.whatsInside : ['High-fidelity resolution', 'Fully editable source files', 'Documentation included']).map((item: string, i: number) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <span className="text-[#FF3B3B]">✦</span> {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="mt-auto pt-8 border-t border-white/5 space-y-4">
-            {!isNetflix && (
-                <div className="flex items-center justify-between mb-4">
-                   <div className="flex items-center gap-3">
-                       <span className="text-white font-mono font-bold text-4xl">{product.price}</span>
-                       <div className="bg-white/5 px-2 py-1 rounded text-[10px] text-gray-500 uppercase tracking-widest">PRO Artifact</div>
-                   </div>
-                </div>
-            )}
-            
-            <button 
-                onClick={onSave}
-                className="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-[#FF3B3B] hover:text-white transition-all flex items-center justify-center gap-2"
-            >
-              {isNetflix ? 'Get Access' : 'Save to Library'} <span>+</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ProductCard: React.FC<{ product: any, observe: any, onPreview: (p: any) => void, onSave: (p: any) => void }> = ({ product, observe, onPreview, onSave }) => {
-  const [isLiked, setIsLiked] = useState(false);
-
-  return (
-    <div 
-      ref={observe}
-      className="group bg-[#111] border border-[#1E1E1E] rounded-xl overflow-hidden transition-all duration-300 hover:border-[#2A2A2A] hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)] transform hover:-translate-y-1 flex flex-col h-full"
-    >
-      <div className="relative overflow-hidden cursor-pointer aspect-[3/4]" onClick={() => onPreview(product)}>
-        <img 
-          src={product.imageUrl || `https://picsum.photos/600/800?random=${product.seed}`} 
-          alt={product.title}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-        />
-        
-        {/* Badges */}
-        <div className="absolute top-4 left-4 flex gap-2">
-          <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full ${
-            product.type === 'pdf' ? 'bg-[#FFD60A] text-black shadow-lg' : 'bg-[#FF3B3B] text-white shadow-lg'
-          }`}>
-            {product.type.toUpperCase()}
-          </span>
-          {product.isNew && (
-            <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-white text-black rounded-full shadow-lg">NEW</span>
-          )}
-        </div>
-
-        {product.isBest && (
-          <div className="absolute top-4 right-4 text-[#FFD60A] drop-shadow-lg">
-            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-              <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
-            </svg>
-          </div>
-        )}
-
-        {/* Hover Overlay */}
-        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col items-center justify-center p-4 backdrop-blur-[2px]">
-          <div className="bg-white text-black px-6 py-3 text-xs font-bold rounded-full transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300 shadow-2xl flex items-center gap-2">
-            View Details <span className="text-[#FF3B3B]">→</span>
-          </div>
-        </div>
-
-        <button 
-            onClick={(e) => { e.stopPropagation(); setIsLiked(!isLiked); }}
-            className={`absolute bottom-4 right-4 z-20 transition-all transform hover:scale-125 ${isLiked ? 'text-[#FF3B3B]' : 'text-white/70 hover:text-white'}`}
-        >
-            <svg className="w-6 h-6 fill-current drop-shadow-lg" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-        </button>
-      </div>
-
-      <div className="p-6 flex flex-col flex-grow">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-mono text-[#FF3B3B] tracking-[0.2em] font-bold uppercase">{product.category}</span>
-          <span className="text-[10px] font-mono text-[#666] uppercase">{product.type === 'pdf' ? 'Printable' : 'Interactive'}</span>
-        </div>
-        <h3 className="text-white font-bold text-xl leading-tight mb-3 group-hover:text-[#FF3B3B] transition-colors cursor-pointer" onClick={() => onPreview(product)}>{product.title}</h3>
-        <p className="text-[#666] text-sm mb-4 line-clamp-2 leading-relaxed">{product.desc}</p>
-        
-        {/* Save to Library / Get Access Action Button */}
-        <button 
-            onClick={(e) => { e.stopPropagation(); onSave(product); }}
-            className="w-full bg-[#181818] border border-white/5 hover:border-[#FF3B3B] text-white hover:bg-[#FF3B3B] py-3.5 rounded-xl text-xs font-mono font-bold tracking-wider active:scale-[0.98] transition-all duration-200 mb-4 flex items-center justify-center gap-2 cursor-pointer"
-        >
-            SAVE TO LIBRARY +
-        </button>
-        
-        <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
-          <div className="flex flex-col">
-            <span className="text-[#444] text-[10px] font-mono uppercase tracking-widest line-through mb-1">{product.original || '₹999'}</span>
-            <div className="flex items-baseline gap-1">
-                <span className="text-white font-mono font-black text-2xl tracking-tighter">FREE</span>
-                <span className="text-[var(--accent)] text-[8px] font-bold uppercase tracking-widest">BETA</span>
-            </div>
-          </div>
-          <button 
-            onClick={() => onPreview(product)}
-            className="bg-transparent border border-white/10 text-white hover:bg-white hover:text-black px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 group/btn cursor-pointer"
-          >
-            {product.type === 'site' ? 'Watch Video 🎥' : 'Preview →'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// --- MODULAR HELPERS IMPORTED ---
 
 export default function App() {
   const { scrollYProgress } = useScroll();
@@ -1813,6 +106,7 @@ export default function App() {
     }
   };
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxSection, setLightboxSection] = useState<'netflix' | 'paytm' | null>(null);
   const [minTimePassed, setMinTimePassed] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -1820,13 +114,6 @@ export default function App() {
     const timer = setTimeout(() => setMinTimePassed(true), 3000);
     return () => clearTimeout(timer);
   }, []);
-
-  const testimonials = [
-    { text: "recreated everything. even the trailers. worth every penny.", author: "Aryan Sharma", location: "Bangalore" },
-    { text: "the pdf layouts are gorgeous. printing it for our desk.", author: "Simron Das", location: "Mumbai" },
-    { text: "best thing i found for our anniversary. she was in tears.", author: "Kabir Mehta", location: "Delhi" },
-    { text: "High quality artifacts. very premium feel.", author: "Rahul V.", location: "Pune" }
-  ];
 
   const [adminData, setAdminData] = useState<{
     siteName: string;
@@ -1840,6 +127,14 @@ export default function App() {
     heroSecondaryButtonText: string;
     heroImages: string[];
     netflixShowcase: {
+      title: string;
+      subtitle: string;
+      price: string;
+      originalPrice: string;
+      features: { emoji: string; title: string; desc: string }[];
+      screenshots: { id: number; url: string; label: string; size: 'hero' | 'portrait' | 'square' | 'wide' }[];
+    };
+    paytmShowcase: {
       title: string;
       subtitle: string;
       price: string;
@@ -1883,6 +178,27 @@ export default function App() {
         { id: 5, url: 'https://picsum.photos/800/450?random=305', label: 'Our Story Page', size: 'wide' },
       ]
     },
+    paytmShowcase: {
+      title: 'The Paytm Secured Birthday Scan',
+      subtitle: 'Surprise them with a fully responsive Paytm-themed scan & gift experience. Scan a QR to reveal beautiful childhood memories, custom soundbox audio alerts, and a personalized secret UPI voucher!',
+      price: 'FREE',
+      originalPrice: '₹999',
+      features: [
+        { emoji: '📲', title: 'Personalized QR Codes', desc: 'Scan code to launch a beautiful milestone interactive timeline.' },
+        { emoji: '🔊', title: 'Interactive Soundbox', desc: 'Plays customized background quotes and sound alerts reflecting Paytm Soundbox.' },
+        { emoji: '💳', title: 'Mock Payment Screen', desc: 'A gorgeous transfer UI loaded with relationship statistics or special dates.' },
+        { emoji: '🔐', title: 'Secure Gifting Badges', desc: 'Secure connection banner and standard secure digital details.' },
+        { emoji: '💸', title: 'Voucher Code Reveal', desc: 'Beautiful custom gift cards, coupon rewards, or digital scratch cards.' },
+        { emoji: '⚡', title: 'Speedy No-Code setup', desc: 'HTML/React package ready to launch instantly, share on mobile on a tap.' },
+      ],
+      screenshots: [
+        { id: 1, url: 'https://picsum.photos/800/450?random=401', label: 'Interactive Soundbox Feed', size: 'hero' },
+        { id: 2, url: 'https://picsum.photos/400/711?random=402', label: 'Payment Scan QR Code', size: 'portrait' },
+        { id: 3, url: 'https://picsum.photos/400/711?random=403', label: 'Payment Processing Alert', size: 'portrait' },
+        { id: 4, url: 'https://picsum.photos/400/400?random=404', label: 'Scratch & Win Gift', size: 'square' },
+        { id: 5, url: 'https://picsum.photos/800/450?random=405', label: 'Transaction Summary Receipt', size: 'wide' },
+      ]
+    },
     stats: [
       { number: '2,400+', label: 'Templates' },
       { number: '180+', label: 'Websites Built' },
@@ -1904,6 +220,17 @@ export default function App() {
       title: 'Curated \n Selection.',
       description: 'Every design is an original piece, crafted with premium typography and editorial layouts.',
       imageUrl: 'https://firebasestorage.googleapis.com/v0/b/friendly-vigil-491809-m0.firebasestorage.app/o/howItWorks%2F1778235786466_Screenshot%202026-05-08%20154743.png?alt=media&token=477843e5-5ecc-4cbb-a9d9-0ba24e660bdb'
+    },
+    pricing: {
+      tagline: '✦ Beta Access',
+      title: 'Built for \nLovers, by Lovers.',
+      subtitle: 'Currently in Private Beta. All artifacts are available for free.',
+      tier1Price: 'Free',
+      tier1OriginalPrice: '₹499',
+      tier2Price: 'Free',
+      tier2OriginalPrice: '₹1499',
+      tier3Price: 'Free',
+      tier3OriginalPrice: '₹4999',
     }
   });
 
@@ -1939,13 +266,21 @@ export default function App() {
             ...prev.netflixShowcase,
             ...data.netflixShowcase
           } : prev.netflixShowcase,
+          paytmShowcase: data.paytmShowcase ? {
+            ...prev.paytmShowcase,
+            ...data.paytmShowcase
+          } : prev.paytmShowcase,
           stats: data.stats || prev.stats,
           footerTagline: data.footerTagline || prev.footerTagline,
           howItWorks: data.howItWorks || prev.howItWorks,
           curatedSelection: data.curatedSelection ? {
             ...prev.curatedSelection,
             ...data.curatedSelection
-          } : prev.curatedSelection
+          } : prev.curatedSelection,
+          pricing: data.pricing ? {
+            ...prev.pricing,
+            ...data.pricing
+          } : prev.pricing
         }));
 
         if (data.accentColor) {
@@ -2398,10 +733,15 @@ export default function App() {
              <div className="w-full grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[800px]">
                 {/* Hero Slot */}
                 <div 
-                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
-                    onClick={() => setLightboxIndex(0)}
+                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    onClick={() => {
+                        setLightboxSection('netflix');
+                        setLightboxIndex(0);
+                    }}
                 >
-                    <img src={adminData.netflixShowcase.screenshots[0].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                    <img src={adminData.netflixShowcase.screenshots[0].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid artifact" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#E50914] shadow-[0_0_12px_#E50914] top-0 animate-[netflix-laser_5s_infinite_ease-in-out] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#E50914]/5 opacity-30 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" />
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 md:p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[0].label}</span>
                     </div>
@@ -2409,10 +749,15 @@ export default function App() {
                 
                 {/* Portrait Slot 1 */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
-                    onClick={() => setLightboxIndex(1)}
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    onClick={() => {
+                        setLightboxSection('netflix');
+                        setLightboxIndex(1);
+                    }}
                 >
-                    <img src={adminData.netflixShowcase.screenshots[1].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                    <img src={adminData.netflixShowcase.screenshots[1].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid artifact" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#E50914] shadow-[0_0_12px_#E50914] top-0 animate-[netflix-laser_4s_infinite_ease-in-out_1s] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#E50914]/5 opacity-30 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" />
                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[1].label}</span>
                     </div>
@@ -2420,10 +765,15 @@ export default function App() {
 
                 {/* Portrait Slot 2 */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
-                    onClick={() => setLightboxIndex(2)}
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    onClick={() => {
+                        setLightboxSection('netflix');
+                        setLightboxIndex(2);
+                    }}
                 >
-                    <img src={adminData.netflixShowcase.screenshots[2].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                    <img src={adminData.netflixShowcase.screenshots[2].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid artifact" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#E50914] shadow-[0_0_12px_#E50914] top-0 animate-[netflix-laser_6s_infinite_ease-in-out] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#E50914]/5 opacity-30 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" />
                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[2].label}</span>
                     </div>
@@ -2431,10 +781,15 @@ export default function App() {
 
                 {/* Square Slot */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
-                    onClick={() => setLightboxIndex(3)}
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    onClick={() => {
+                        setLightboxSection('netflix');
+                        setLightboxIndex(3);
+                    }}
                 >
-                    <img src={adminData.netflixShowcase.screenshots[3].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                    <img src={adminData.netflixShowcase.screenshots[3].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid artifact" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#E50914] shadow-[0_0_12px_#E50914] top-0 animate-[netflix-laser_4.5s_infinite_ease-in-out_2s] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#E50914]/5 opacity-30 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" />
                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[3].label}</span>
                     </div>
@@ -2442,10 +797,15 @@ export default function App() {
 
                 {/* Wide Slot */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-white/10 cursor-pointer shadow-2xl"
-                    onClick={() => setLightboxIndex(4)}
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    onClick={() => {
+                        setLightboxSection('netflix');
+                        setLightboxIndex(4);
+                    }}
                 >
-                    <img src={adminData.netflixShowcase.screenshots[4].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="Bento grid artifact" />
+                    <img src={adminData.netflixShowcase.screenshots[4].url} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid artifact" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#E50914] shadow-[0_0_12px_#E50914] top-0 animate-[netflix-laser_5.5s_infinite_ease-in-out_1.5s] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#E50914]/5 opacity-30 group-hover:opacity-0 transition-opacity duration-500 pointer-events-none" />
                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                         <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.netflixShowcase.screenshots[4].label}</span>
                     </div>
@@ -2484,6 +844,171 @@ export default function App() {
       </div>
     </section>
 
+      {/* Paytm Secured Birthday Scan Showcase */}
+      <section id="paytm-sites" ref={observe} className="py-16 md:py-20 pb-12 px-6 md:px-12 bg-[#010915] text-white grain relative border-t border-b border-white/5 overflow-hidden">
+        <div className="absolute top-0 left-0 w-1/2 h-full bg-[radial-gradient(circle_at_0%_0%,rgba(0,185,245,0.07),transparent)] pointer-events-none"></div>
+        <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_100%_100%,rgba(0,41,112,0.1),transparent)] pointer-events-none"></div>
+        
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col lg:flex-row-reverse gap-20 items-center mb-16">
+            {/* Column 1: Info (now on the right visually due to flex-row-reverse) */}
+            <div className="w-full lg:w-5/12">
+              <div className="inline-block px-3 py-1 bg-[#00b9f5]/10 border border-[#00b9f5]/20 rounded-full mb-6">
+                <span className="text-[#00b9f5] text-[10px] font-mono font-bold tracking-widest uppercase">✦ Secure Gifting Standard</span>
+              </div>
+              <h2 className="font-display text-4xl md:text-6xl font-black mb-6 tracking-tight leading-none text-white">
+                {adminData.paytmShowcase?.title || 'The Paytm Secured Birthday Scan'}
+              </h2>
+              <p className="text-gray-400 text-base md:text-lg mb-8 leading-relaxed font-medium">
+                {adminData.paytmShowcase?.subtitle || 'Surprise them with a fully responsive Paytm-themed scan & gift experience. Scan a QR to reveal beautiful childhood memories, custom soundbox audio alerts, and a personalized secret UPI voucher!'}
+              </p>
+              
+              <div className="flex items-center gap-6 mb-8 bg-[#002970]/30 border border-[#00b9f5]/10 rounded-2xl p-6">
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-mono text-[#00b9f5] uppercase tracking-widest">PROMOTIONAL OFFER</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <span className="text-[#00b9f5] text-3xl font-mono font-black">{adminData.paytmShowcase?.price || 'FREE'}</span>
+                    <span className="text-gray-500 text-sm line-through font-mono">{adminData.paytmShowcase?.originalPrice || '₹999'}</span>
+                  </div>
+                </div>
+                <div className="h-10 w-[1px] bg-white/10" />
+                <div className="text-left">
+                  <span className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">DEPLOYMENT STATUS</span>
+                  <p className="text-white text-xs font-bold leading-none mt-1.5 flex items-center gap-1.5 font-mono">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" /> SECURE CONNECTED
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                {(adminData.paytmShowcase?.features || []).map((feature, index) => (
+                  <div key={index} className="flex flex-col gap-1 text-left">
+                    <div className="flex items-center gap-3">
+                      <PaytmFeatureIcon emoji={feature.emoji} />
+                      <h4 className="text-white font-bold text-sm uppercase tracking-widest">{feature.title}</h4>
+                    </div>
+                    <p className="text-gray-400 text-xs leading-relaxed pl-9">{feature.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Column 2: Bento Grid Visuals (now on the left visually) */}
+            <div className="w-full lg:w-7/12">
+              <div className="w-full grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[800px]">
+                {/* Hero Slot */}
+                <div 
+                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    onClick={() => {
+                        setLightboxSection('paytm');
+                        setLightboxIndex(0);
+                    }}
+                >
+                    <img src={adminData.paytmShowcase?.screenshots?.[0]?.url || 'https://picsum.photos/800/450?random=401'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid Paytm showcase" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#00b9f5] shadow-[0_0_12px_#00b9f5] top-0 animate-[paytm-laser_5s_infinite_ease-in-out] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#002970]/10 opacity-40 group-hover:opacity-0 transition-opacity duration-500" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-6 md:p-8 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[10px] md:text-xs uppercase tracking-[0.3em] font-bold">{adminData.paytmShowcase?.screenshots?.[0]?.label || 'Interactive Soundbox Feed'}</span>
+                    </div>
+                </div>
+                
+                {/* Portrait Slot 1 */}
+                <div 
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    onClick={() => {
+                        setLightboxSection('paytm');
+                        setLightboxIndex(1);
+                    }}
+                >
+                    <img src={adminData.paytmShowcase?.screenshots?.[1]?.url || 'https://picsum.photos/400/711?random=402'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid Paytm showcase" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#00b9f5] shadow-[0_0_12px_#00b9f5] top-0 animate-[paytm-laser_4s_infinite_ease-in-out_1s] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#002970]/10 opacity-40 group-hover:opacity-0 transition-opacity duration-500" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.paytmShowcase?.screenshots?.[1]?.label || 'Payment Scan QR Code'}</span>
+                    </div>
+                </div>
+
+                {/* Portrait Slot 2 */}
+                <div 
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    onClick={() => {
+                        setLightboxSection('paytm');
+                        setLightboxIndex(2);
+                    }}
+                >
+                    <img src={adminData.paytmShowcase?.screenshots?.[2]?.url || 'https://picsum.photos/400/711?random=403'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid Paytm showcase" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#00b9f5] shadow-[0_0_12px_#00b9f5] top-0 animate-[paytm-laser_6s_infinite_ease-in-out] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#002970]/10 opacity-40 group-hover:opacity-0 transition-opacity duration-500" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.paytmShowcase?.screenshots?.[2]?.label || 'Payment Processing Alert'}</span>
+                    </div>
+                </div>
+
+                {/* Square Slot */}
+                <div 
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    onClick={() => {
+                        setLightboxSection('paytm');
+                        setLightboxIndex(3);
+                    }}
+                >
+                    <img src={adminData.paytmShowcase?.screenshots?.[3]?.url || 'https://picsum.photos/400/400?random=404'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid Paytm showcase" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#00b9f5] shadow-[0_0_12px_#00b9f5] top-0 animate-[paytm-laser_4.5s_infinite_ease-in-out_2s] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#002970]/10 opacity-40 group-hover:opacity-0 transition-opacity duration-500" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.paytmShowcase?.screenshots?.[3]?.label || 'Scratch & Win Gift'}</span>
+                    </div>
+                </div>
+
+                {/* Wide Slot */}
+                <div 
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    onClick={() => {
+                        setLightboxSection('paytm');
+                        setLightboxIndex(4);
+                    }}
+                >
+                    <img src={adminData.paytmShowcase?.screenshots?.[4]?.url || 'https://picsum.photos/800/450?random=405'} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="Bento grid Paytm showcase" />
+                    <div className="absolute inset-x-0 h-[2px] bg-[#00b9f5] shadow-[0_0_12px_#00b9f5] top-0 animate-[paytm-laser_5.5s_infinite_ease-in-out_1.5s] pointer-events-none z-10" />
+                    <div className="absolute inset-0 bg-[#002970]/10 opacity-40 group-hover:opacity-0 transition-opacity duration-500" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/40 to-transparent p-4 md:p-6 opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                        <span className="text-white font-mono text-[9px] uppercase tracking-[0.3em] font-bold">{adminData.paytmShowcase?.screenshots?.[4]?.label || 'Transaction Summary Receipt'}</span>
+                    </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center flex flex-col items-center justify-center mt-4">
+             <button 
+                 onClick={() => {
+                     const paytm = products.find(p => p.title.toLowerCase().includes('paytm'));
+                     if (paytm) {
+                         setPurchaseModalProduct({
+                             id: paytm.id,
+                             title: paytm.title,
+                             price: paytm.price,
+                             original: paytm.original,
+                             category: paytm.category
+                         });
+                     } else {
+                         setPurchaseModalProduct({
+                             id: 'paytm-showcase',
+                             title: adminData.paytmShowcase?.title || 'Paytm Birthday Scan',
+                             price: adminData.paytmShowcase?.price || 'FREE',
+                             original: adminData.paytmShowcase?.originalPrice || '₹999',
+                             category: 'Anniversary Sites'
+                         });
+                     }
+                 }}
+                 className="bg-[#002970] text-white border border-[#00b9f5]/30 px-12 py-5 rounded-lg text-xl font-bold hover:bg-[#001f57] hover:border-[#00b9f5]/60 transition-all shadow-[0_20px_40px_rgba(0,185,245,0.15)] active:scale-[0.98] cursor-pointer"
+             >
+                 Get the Paytm Template →
+             </button>
+        </div>
+      </section>
+
       {/* How It Works - Light alternate */}
       <section id="about" ref={observe} className="py-16 md:py-24 section-light border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
@@ -2511,52 +1036,25 @@ export default function App() {
         </div>
       </section>
 
-      {/* Testimonials - Dark */}
-      <section ref={observe} className="py-40 bg-dark text-white grain">
-        <div className="px-6 md:px-12 mb-20 max-w-7xl mx-auto flex items-end justify-between overflow-visible">
-          <div>
-            <span className="font-mono text-[10px] text-[#FF3B3B] tracking-[0.3em] font-bold uppercase mb-4 block">✦ Community</span>
-            <h2 className="font-display text-5xl md:text-7xl font-bold">Raved About.</h2>
-          </div>
-          <div className="hidden md:flex gap-4">
-             <div className="bg-white/5 border border-white/10 p-5 rounded-xl">
-                 <p className="text-3xl font-bold text-[#FF3B3B]">2.4k+</p>
-                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-2">Satisfied Souls</p>
-             </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 px-6 md:px-12 max-w-7xl mx-auto py-12">
-          {testimonials.map((t, idx) => (
-            <div key={idx} className="bg-[#0D0D0D] border border-white/5 rounded-2xl p-8 transition-all hover:border-white/10 hover:-translate-y-2 group flex flex-col">
-              <div className="text-[var(--accent)] text-4xl mb-6 opacity-50 group-hover:opacity-100 italic">"</div>
-              <p className="text-white italic text-base leading-relaxed mb-6 font-medium opacity-80 group-hover:opacity-100 transition-opacity flex-1">"{t.text}"</p>
-              <div className="flex items-center gap-4 pt-6 border-t border-white/5">
-                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center font-bold text-xs text-[var(--accent)]">{t.author.split(' ').map(n=>n[0]).join('')}</div>
-                <div>
-                   <p className="text-white text-xs font-bold">{t.author}</p>
-                   <p className="text-gray-500 text-[10px] tracking-widest uppercase">{t.location}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* Pricing - Light */}
       <section id="pricing" ref={observe} className="py-40 section-light relative">
         <div className="max-w-7xl mx-auto px-6 md:px-12 text-center mb-24">
-            <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">✦ Beta Access</span>
-            <h2 className="font-display text-6xl md:text-8xl font-black mb-6">Built for <br/>Lovers, by Lovers.</h2>
-            <p className="text-gray-500 text-xl font-medium">Currently in Private Beta. All artifacts are available for free.</p>
+            <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">{adminData.pricing?.tagline || '✦ Beta Access'}</span>
+            <h2 className="font-display text-6xl md:text-8xl font-black mb-6" dangerouslySetInnerHTML={{ __html: (adminData.pricing?.title || 'Built for <br/>Lovers, by Lovers.').replace(/\n/g, '<br/>') }}></h2>
+            <p className="text-gray-500 text-xl font-medium">{adminData.pricing?.subtitle || 'Currently in Private Beta. All artifacts are available for free.'}</p>
         </div>
 
         <div className="max-w-6xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-8 relative z-20">
           <div className="bg-white border border-gray-100 p-12 rounded-3xl hover:shadow-2xl transition-all relative overflow-hidden group">
             <div className="absolute top-0 right-0 bg-[#FFD60A] text-black text-[8px] font-bold px-4 py-1.5 uppercase tracking-widest -rotate-45 translate-x-4 translate-y-2">Public Beta</div>
             <h3 className="text-gray-400 font-mono text-xs tracking-widest mb-6 uppercase italic">Artifact</h3>
-            <div className="flex items-baseline gap-1 mb-8">
-              <span className="text-dark text-5xl font-mono font-bold">Free</span>
+            <div className="flex items-baseline gap-1 mb-8 flex-wrap">
+              <span className="text-dark text-5xl font-mono font-bold">{adminData.pricing?.tier1Price || 'Free'}</span>
+              {adminData.pricing?.tier1OriginalPrice && (
+                <span className="text-gray-400 line-through text-sm font-mono ml-2">{adminData.pricing.tier1OriginalPrice}</span>
+              )}
             </div>
             <ul className="space-y-4 mb-12">
               {['Signature PDF Layout', 'Instant Source Access', 'Print-ready Assets', 'Basic Customization'].map(f => (
@@ -2569,7 +1067,13 @@ export default function App() {
               onClick={() => {
                 const pdf = products.find(p => p.type === 'pdf');
                 if (pdf) setPurchaseModalProduct(pdf);
-                else alert('Artifact collection loading...');
+                else setPurchaseModalProduct({
+                  id: 'pdf-fallback',
+                  title: 'Signature PDF Layout',
+                  price: adminData.pricing?.tier1Price || 'Free',
+                  original: adminData.pricing?.tier1OriginalPrice || '₹499',
+                  category: 'PDF templates'
+                });
               }}
               className="w-full border-2 border-dark text-dark py-5 rounded-2xl font-bold hover:bg-dark hover:text-white transition-all"
             >
@@ -2582,8 +1086,11 @@ export default function App() {
                 <span className="bg-[#FF3B3B] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Premium</span>
             </div>
             <h3 className="text-[#FF3B3B] font-mono text-xs tracking-widest mb-6 uppercase italic">Experience</h3>
-            <div className="flex items-baseline gap-1 mb-8">
-              <span className="text-white text-5xl font-mono font-bold">Free</span>
+            <div className="flex items-baseline gap-1 mb-8 flex-wrap">
+              <span className="text-white text-5xl font-mono font-bold">{adminData.pricing?.tier2Price || 'Free'}</span>
+              {adminData.pricing?.tier2OriginalPrice && (
+                <span className="text-gray-500 line-through text-sm font-mono ml-2">{adminData.pricing.tier2OriginalPrice}</span>
+              )}
             </div>
             <ul className="space-y-4 mb-12">
               {['Netflix Site Bundle', 'Full JSX Components', 'Interactive Profiles', 'Live Preview Hosting', 'Priority Support'].map(f => (
@@ -2599,8 +1106,8 @@ export default function App() {
                 else setPurchaseModalProduct({
                   id: 'netflix-showcase',
                   title: adminData.netflixShowcase.title,
-                  price: adminData.netflixShowcase.price,
-                  original: adminData.netflixShowcase.originalPrice,
+                  price: adminData.pricing?.tier2Price || adminData.netflixShowcase.price || 'Free',
+                  original: adminData.pricing?.tier2OriginalPrice || adminData.netflixShowcase.originalPrice || '₹1,499',
                   category: 'Anniversary Sites'
                 });
               }}
@@ -2613,8 +1120,11 @@ export default function App() {
           <div className="bg-white border border-gray-100 p-12 rounded-3xl hover:shadow-2xl transition-all relative overflow-hidden group">
             <div className="absolute top-0 right-0 bg-[#FFD60A] text-black text-[8px] font-bold px-4 py-1.5 uppercase tracking-widest -rotate-45 translate-x-4 translate-y-2">Public Beta</div>
             <h3 className="text-gray-400 font-mono text-xs tracking-widest mb-6 uppercase italic">The Vault</h3>
-            <div className="flex items-baseline gap-1 mb-8">
-              <span className="text-dark text-5xl font-mono font-bold">Free</span>
+            <div className="flex items-baseline gap-1 mb-8 flex-wrap">
+              <span className="text-dark text-5xl font-mono font-bold">{adminData.pricing?.tier3Price || 'Free'}</span>
+              {adminData.pricing?.tier3OriginalPrice && (
+                <span className="text-gray-400 line-through text-sm font-mono ml-2">{adminData.pricing.tier3OriginalPrice}</span>
+              )}
             </div>
             <ul className="space-y-4 mb-12">
               {['Complete Collection Access', 'Exclusive Beta Templates', 'Private Community', 'Early Access to Updates'].map(f => (
@@ -2766,8 +1276,93 @@ export default function App() {
         />
       )}
 
+      {/* Dynamic Bento Lightbox Modal */}
+      {lightboxIndex !== null && lightboxSection !== null && (
+        <div className="fixed inset-0 z-[600] bg-black/95 backdrop-blur-2xl flex flex-col justify-between p-6 md:p-12 animate-[fadeIn_0.4s_ease-out]">
+          {/* Top Info Bar */}
+          <div className="flex justify-between items-center w-full relative z-30">
+            <div className="text-left">
+              <span className="font-mono text-[#00b9f5] text-[10px] uppercase tracking-widest block mb-1">
+                {lightboxSection === 'netflix' ? 'NETFLIX ANNIVERSARY SITE' : 'PAYTM BIRTHDAY SCAN'}
+              </span>
+              <h3 className="text-white text-sm font-bold uppercase tracking-wider">
+                {lightboxSection === 'netflix' 
+                  ? adminData.netflixShowcase.screenshots[lightboxIndex]?.label 
+                  : adminData.paytmShowcase?.screenshots?.[lightboxIndex]?.label || 'Secured Interactive Preview'
+                }
+              </h3>
+            </div>
+            <div className="flex items-center gap-6">
+              <span className="text-white/40 font-mono text-xs">
+                {String(lightboxIndex + 1).padStart(2, '0')} / 05
+              </span>
+              <button 
+                onClick={() => {
+                  setLightboxIndex(null);
+                  setLightboxSection(null);
+                }}
+                className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white hover:bg-white/10 active:scale-95 transition-all cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+
+          {/* Main Display Image */}
+          <div className="flex-1 flex items-center justify-center py-8 relative">
+            {/* Left Prev Arrow */}
+            <button 
+              onClick={() => {
+                setLightboxIndex(prev => (prev !== null ? (prev - 1 + 5) % 5 : 0));
+              }}
+              className="absolute left-0 md:left-6 w-12 h-12 rounded-full border border-white/10 bg-black/40 hover:bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all z-30 cursor-pointer"
+            >
+              ←
+            </button>
+
+            <img 
+              src={lightboxSection === 'netflix' 
+                ? adminData.netflixShowcase.screenshots[lightboxIndex]?.url 
+                : adminData.paytmShowcase?.screenshots?.[lightboxIndex]?.url || 'https://picsum.photos/800/450'
+              } 
+              className="max-h-[70vh] max-w-full md:max-w-4xl object-contain rounded-2xl border border-white/10 shadow-3xl animate-[scaleIn_0.3s_cubic-bezier(0.34,1.56,0.64,1)]" 
+              alt="Bento Grid Detail" 
+            />
+
+            {/* Right Next Arrow */}
+            <button 
+              onClick={() => {
+                setLightboxIndex(prev => (prev !== null ? (prev + 1) % 5 : 0));
+              }}
+              className="absolute right-0 md:right-6 w-12 h-12 rounded-full border border-white/10 bg-black/40 hover:bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all z-30 cursor-pointer"
+            >
+              →
+            </button>
+          </div>
+
+          {/* Bottom Controls Indicator */}
+          <div className="flex justify-center gap-2 items-center w-full z-30">
+            {[0, 1, 2, 3, 4].map((idx) => (
+              <button
+                key={idx}
+                onClick={() => setLightboxIndex(idx)}
+                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 cursor-pointer ${lightboxIndex === idx ? (lightboxSection === 'netflix' ? 'bg-[#E50914] w-6' : 'bg-[#00b9f5] w-6') : 'bg-white/25'}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Styles */}
       <style>{`
+        @keyframes netflix-laser {
+          0%, 100% { top: 0%; opacity: 0.3; }
+          50% { top: 100%; opacity: 0.95; }
+        }
+        @keyframes paytm-laser {
+          0%, 100% { top: 0%; opacity: 0.3; }
+          50% { top: 100%; opacity: 0.9; }
+        }
         @keyframes scroll {
           0% { transform: translateY(-100%); }
           100% { transform: translateY(100%); }
