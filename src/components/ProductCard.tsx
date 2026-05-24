@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Play, Eye } from 'lucide-react';
 
 interface ProductCardProps {
   product: {
@@ -27,7 +28,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, observe, onPr
       ref={observe}
       className="group bg-[#111] border border-[#1E1E1E] rounded-xl overflow-hidden transition-all duration-300 hover:border-[#2A2A2A] hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)] transform hover:-translate-y-1 flex flex-col h-full"
     >
-      <div className="relative overflow-hidden cursor-pointer aspect-[3/4]" onClick={() => onPreview(product)}>
+      <div className="relative overflow-hidden cursor-pointer aspect-[4/4] max-h-[420px]" onClick={() => onPreview(product)}>
         <img 
           src={product.imageUrl || `https://picsum.photos/600/800?random=${product.seed}`} 
           alt={product.title}
@@ -71,38 +72,47 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, observe, onPr
         </button>
       </div>
 
-      <div className="p-6 flex flex-col flex-grow">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-mono text-[#FF3B3B] tracking-[0.2em] font-bold uppercase">{product.category}</span>
-          <span className="text-[10px] font-mono text-[#666] uppercase">{product.type === 'pdf' ? 'Printable' : 'Interactive'}</span>
+      <div className="p-4 sm:p-5 flex flex-col flex-grow">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] font-mono text-[#FF3B3B] tracking-[0.2em] font-bold uppercase">{product.category}</span>
+          <span className="text-[9px] font-mono text-[#666] uppercase">{product.type === 'pdf' ? 'Printable' : 'Interactive'}</span>
         </div>
-        <h3 className="text-white font-bold text-xl leading-tight mb-3 group-hover:text-[#FF3B3B] transition-colors cursor-pointer" onClick={() => onPreview(product)}>{product.title}</h3>
-        <p className="text-[#666] text-sm mb-4 line-clamp-2 leading-relaxed">{product.desc}</p>
+        <h3 className="text-white font-bold text-base sm:text-lg leading-snug mb-2 group-hover:text-[#FF3B3B] transition-colors cursor-pointer line-clamp-1" onClick={() => onPreview(product)}>{product.title}</h3>
+        <p className="text-[#666] text-xs sm:text-sm mb-3 line-clamp-2 leading-relaxed">{product.desc}</p>
         
-        {/* Save to Library / Get Access Action Button */}
-        <button 
-            onClick={(e) => { e.stopPropagation(); onSave(product); }}
-            className="w-full bg-[#181818] border border-white/5 hover:border-[#FF3B3B] text-white hover:bg-[#FF3B3B] py-3.5 rounded-xl text-xs font-mono font-bold tracking-wider active:scale-[0.98] transition-all duration-200 mb-4 flex items-center justify-center gap-2 cursor-pointer"
-        >
-            SAVE TO LIBRARY +
-        </button>
-        
-        <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/5">
-          <div className="flex flex-col">
-            {product.original && (
-              <span className="text-[#444] text-[10px] font-mono uppercase tracking-widest line-through mb-1">{product.original}</span>
+        {/* Actions Row containing: Save Button (Left), Preview Icon Button (Middle), Price (Right) */}
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3 border-t border-[#1E1E1E]">
+          {/* Save to Library (Left) */}
+          <button 
+              onClick={(e) => { e.stopPropagation(); onSave(product); }}
+              className="flex-grow bg-[#181818] border border-white/5 hover:border-[#FF3B3B] text-white hover:bg-[#FF3B3B] py-2 px-2.5 rounded-lg text-[10px] font-mono font-bold tracking-wider active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-1 cursor-pointer"
+          >
+              SAVE +
+          </button>
+          
+          {/* Preview / Watch Video Icon Button (Middle) */}
+          <button 
+            onClick={(e) => { e.stopPropagation(); onPreview(product); }}
+            className="flex-shrink-0 bg-[#181818] border border-white/10 text-white hover:bg-white hover:text-black w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer group/btn"
+            title={product.type === 'site' ? 'Watch Video' : 'Preview Artifact'}
+          >
+            {product.type === 'site' ? (
+              <Play className="w-3.5 h-3.5 fill-current transition-transform group-hover/btn:scale-110" />
+            ) : (
+              <Eye className="w-3.5 h-3.5 transition-transform group-hover/btn:scale-110" />
             )}
-            <div className="flex items-baseline gap-1">
-                <span className="text-white font-mono font-black text-2xl tracking-tighter">{product.price || 'FREE'}</span>
-                <span className="text-[var(--accent)] text-[8px] font-bold uppercase tracking-widest">BETA</span>
+          </button>
+
+          {/* Pricing Column (Right) */}
+          <div className="flex flex-col items-end flex-shrink-0 text-right leading-none min-w-[50px]">
+            {product.original && (
+              <span className="text-[#444] text-[9px] font-mono uppercase tracking-widest line-through mb-0.5">{product.original}</span>
+            )}
+            <div className="flex items-baseline gap-0.5 justify-end">
+                <span className="text-white font-mono font-black text-base sm:text-lg tracking-tighter">{product.price || 'FREE'}</span>
+                <span className="text-[#FF3B3B] text-[7px] font-bold uppercase tracking-widest">BETA</span>
             </div>
           </div>
-          <button 
-            onClick={() => onPreview(product)}
-            className="bg-transparent border border-white/10 text-white hover:bg-white hover:text-black px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center gap-2 group/btn cursor-pointer"
-          >
-            {product.type === 'site' ? 'Watch Video 🎥' : 'Preview →'}
-          </button>
         </div>
       </div>
     </div>

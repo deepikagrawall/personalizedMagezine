@@ -231,6 +231,25 @@ export default function App() {
       tier2OriginalPrice: '₹1499',
       tier3Price: 'Free',
       tier3OriginalPrice: '₹4999',
+      tier1Features: [
+        'Signature PDF Layout',
+        'Instant Source Access',
+        'Print-ready Assets',
+        'Basic Customization'
+      ],
+      tier2Features: [
+        'Netflix Site Bundle',
+        'Full JSX Components',
+        'Interactive Profiles',
+        'Live Preview Hosting',
+        'Priority Support'
+      ],
+      tier3Features: [
+        'Complete Collection Access',
+        'Exclusive Beta Templates',
+        'Private Community',
+        'Early Access to Updates'
+      ]
     }
   });
 
@@ -305,8 +324,17 @@ export default function App() {
       const typeMatch = activeType === 'all' || p.type === activeType;
       const catMatch = activeCategory === 'All' || p.category === activeCategory;
       return typeMatch && catMatch;
+    }).map(p => {
+      if (p.type === 'pdf') {
+        return {
+          ...p,
+          price: adminData.pricing?.tier1Price || p.price,
+          original: adminData.pricing?.tier1OriginalPrice || p.original
+        };
+      }
+      return p;
     });
-  }, [products, activeType, activeCategory]);
+  }, [products, activeType, activeCategory, adminData.pricing]);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -450,39 +478,66 @@ export default function App() {
       </a>
 
       {/* Hero */}
-      <section ref={observe} className="min-h-screen flex flex-col items-center justify-center pt-24 px-6 md:px-12 pb-16 relative overflow-hidden grain section-dark grid-pattern">
+      <section ref={observe} className="min-h-[85vh] md:min-h-[90vh] flex flex-col items-center justify-center pt-20 px-6 md:px-12 pb-8 relative overflow-hidden grain section-dark grid-pattern">
         {/* Animated Background Elements - Refined */}
         <div className="absolute top-0 right-0 w-[50%] h-[50%] bg-[var(--accent)]/5 blur-[200px] rounded-full pointer-events-none -z-10 animate-[pulse_15s_infinite_ease-in-out]"></div>
         <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-blue-500/5 blur-[200px] rounded-full pointer-events-none -z-10 animate-[pulse_20s_infinite_ease-in-out]"></div>
         
-        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-12 md:gap-24 relative z-20">
+        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-center gap-6 md:gap-12 relative z-20">
           <div className="w-full md:w-1/2 flex flex-col items-start text-balance">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full mb-8 animate-[fadeIn_0.8s_ease-out]">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full mb-3 animate-[fadeIn_0.8s_ease-out]">
               <span className="w-2 h-2 bg-[var(--accent)] rounded-full animate-ping"></span>
               <span className="text-[10px] font-mono font-bold tracking-[0.3em] text-[#888] uppercase">{adminData.heroTagline}</span>
             </div>
             
-            <h1 className="flex flex-col text-white mb-8 overflow-hidden">
-              <span className="font-display text-3xl sm:text-7xl md:text-[110px] italic leading-[0.85] animate-[slideUp_1s_ease-out_forwards]">{adminData.heroTitlePart1}</span>
-              <span className="font-display text-3xl sm:text-7xl md:text-[110px] font-black leading-[0.85] animate-[slideUp_1s_ease-out_0.2s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart2}</span>
-              <span className="font-display text-3xl sm:text-7xl md:text-[110px] italic text-[var(--accent)] leading-[0.85] animate-[slideUp_1s_ease-out_0.4s_forwards] translate-y-full opacity-0">{adminData.heroTitlePart3}</span>
+            <h1 className="flex flex-col text-white mb-3 tracking-tighter">
+              <div className="overflow-hidden">
+                <motion.span 
+                  initial={{ y: "100%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="block font-display text-5xl sm:text-8xl md:text-[94px] font-black leading-[0.78]"
+                >
+                  {adminData.heroTitlePart1}
+                </motion.span>
+              </div>
+              <div className="overflow-hidden mt-[1px]">
+                <motion.span 
+                  initial={{ y: "100%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                  className="block font-display text-4xl sm:text-7xl md:text-[84px] font-black leading-[0.78]"
+                >
+                  {adminData.heroTitlePart2}
+                </motion.span>
+              </div>
+              <div className="overflow-hidden mt-[1px]">
+                <motion.span 
+                  initial={{ y: "100%", opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
+                  className="block font-display text-4xl sm:text-7xl md:text-[84px] italic text-[var(--accent)] leading-[0.78]"
+                >
+                  {adminData.heroTitlePart3}
+                </motion.span>
+              </div>
             </h1>
 
-            <p className="text-[#888] text-lg md:text-2xl max-w-xl mb-12 font-light leading-relaxed animate-[fadeIn_1.5s_ease-out_0.6s_forwards] opacity-0">
+            <p className="text-[#888] text-sm sm:text-base md:text-[17px] max-w-xl mb-6 font-light leading-relaxed animate-[fadeIn_1.5s_ease-out_0.6s_forwards] opacity-0">
               {adminData.heroDescription}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-5 w-full sm:w-auto animate-[fadeIn_1.5s_ease-out_0.8s_forwards] opacity-0">
-              <a href="#templates" className="bg-white text-black px-12 py-5 rounded-full text-lg font-bold hover:bg-[var(--accent)] hover:text-white transition-all text-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:scale-105 active:scale-95">
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto animate-[fadeIn_1.5s_ease-out_0.8s_forwards] opacity-0">
+              <a href="#templates" className="bg-white text-black px-8 py-3.5 rounded-full text-base font-bold hover:bg-[var(--accent)] hover:text-white transition-all text-center shadow-[0_20px_50px_rgba(0,0,0,0.3)] hover:scale-105 active:scale-95">
                 {adminData.heroPrimaryButtonText}
               </a>
-              <a href="#netflix-sites" className="border border-white/20 hover:border-white px-12 py-5 rounded-full text-lg font-bold transition-all text-center backdrop-blur-sm hover:bg-white/5 active:scale-95">
+              <a href="#netflix-sites" className="border border-white/20 hover:border-white px-8 py-3.5 rounded-full text-base font-bold transition-all text-center backdrop-blur-sm hover:bg-white/5 active:scale-95">
                 {adminData.heroSecondaryButtonText}
               </a>
             </div>
           </div>
 
-          <motion.div style={{ y: heroParallax }} className="w-full md:w-1/2 relative h-[400px] md:h-[650px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
+          <motion.div style={{ y: heroParallax }} className="w-full md:w-1/2 relative h-[320px] sm:h-[400px] md:h-[500px] perspective-[2000px] animate-[fadeIn_2s_ease-out_0.5s_forwards] opacity-0">
             <div className="absolute inset-0 flex items-center justify-center">
               {(adminData.heroImages.length > 0 ? adminData.heroImages : [null, null, null]).slice(0, 5).map((url, i, arr) => {
                 const total = arr.length;
@@ -491,11 +546,11 @@ export default function App() {
                 return (
                   <div 
                     key={i}
-                    className="absolute w-[200px] h-[280px] md:w-[320px] md:h-[450px] rounded-3xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_60px_120px_rgba(0,0,0,0.9)] shrink-0"
+                    className="absolute w-[180px] h-[252px] md:w-[280px] md:h-[392px] rounded-2xl overflow-hidden border border-white/10 bg-[#111] shadow-[0_45px_90px_rgba(0,0,0,0.9)] shrink-0 transition-transform cursor-pointer hover:scale-[1.03]"
                     style={{ 
                       '--rot': `${-12 + (i * 8)}deg`,
                       zIndex: i,
-                      transform: `translateX(${offset * (total > 3 ? (window.innerWidth < 768 ? 40 : 60) : (window.innerWidth < 768 ? 60 : 100))}px) rotateY(${-20 + (i * 10)}deg) translateY(${Math.abs(offset) * 15}px) rotateZ(${offset * 5}deg)`,
+                      transform: `translateX(${offset * (total > 3 ? (window.innerWidth < 768 ? 30 : 50) : (window.innerWidth < 768 ? 45 : 80))}px) rotateY(${-20 + (i * 10)}deg) translateY(${Math.abs(offset) * 12}px) rotateZ(${offset * 4}deg)`,
                     }}
                     onClick={() => featured && setSelectedProduct(featured)}
                   >
@@ -541,18 +596,18 @@ export default function App() {
       </section>
 
       {/* Grid Section - Light */}
-      <section id="templates" ref={observe} className="py-24 px-6 md:px-12 section-light">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <section id="templates" ref={observe} className="py-12 md:py-16 px-6 md:px-12 section-light">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
           <div>
             <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">
               {adminData.curatedSelection?.subtitle || "✦ The Library"}
             </span>
-            <h2 className="font-display text-5xl md:text-7xl font-black mb-8 leading-none" dangerouslySetInnerHTML={{ __html: (adminData.curatedSelection?.title || "Curated<br/>Selection.").replace('\n', '<br/>') }}></h2>
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-6 leading-tight tracking-tight" dangerouslySetInnerHTML={{ __html: (adminData.curatedSelection?.title || "Curated Selection").replace(/\n|\\n|<br\s*\/?>/gi, ' ') }}></h2>
             <p className="text-gray-500 text-lg max-w-xl">
               {adminData.curatedSelection?.description || "Every design is an original piece, crafted with premium typography and editorial layouts."}
             </p>
           </div>
-          <div className="relative flex items-center justify-center h-[450px] md:h-[550px]">
+          <div className="relative flex items-center justify-center h-[320px] sm:h-[380px] md:h-[420px]">
              {/* Artifact Carousel Intro */}
              <div className="relative w-full h-full flex items-center justify-center">
                 {bestArtifacts.length > 0 ? (
@@ -566,18 +621,18 @@ export default function App() {
                           opacity: currentArtifactIdx === idx ? 1 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 0.4 : 0,
                           scale: currentArtifactIdx === idx ? 1 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 0.9 : 0.8,
                           rotate: currentArtifactIdx === idx ? 0 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 5 : -5,
-                          x: currentArtifactIdx === idx ? 0 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 40 : -40,
+                          x: currentArtifactIdx === idx ? 0 : idx === (currentArtifactIdx + 1) % bestArtifacts.length ? 30 : -30,
                           zIndex: currentArtifactIdx === idx ? 20 : 10,
                           filter: currentArtifactIdx === idx ? 'blur(0px)' : 'blur(2px)'
                          }}
                         transition={{ duration: 1, ease: [0.23, 1, 0.32, 1] }}
-                        className="absolute w-[220px] md:w-[280px] aspect-[3/4] rounded-2xl overflow-hidden border-4 border-white shadow-[0_40px_100px_rgba(0,0,0,0.6)] cursor-pointer group/art"
+                        className="absolute w-[160px] sm:w-[180px] md:w-[220px] aspect-[3/4] rounded-2xl overflow-hidden border-4 border-white shadow-[0_40px_100px_rgba(0,0,0,0.6)] cursor-pointer group/art"
                         onClick={() => setSelectedProduct(art)}
                       >
                          <img src={art.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover/art:scale-110" alt={art.title} />
-                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-6 md:p-8">
-                            <span className="text-[10px] font-mono text-[var(--accent)] uppercase tracking-[0.3em] font-bold mb-2">Featured Artifact</span>
-                            <h4 className="text-white font-display text-lg md:text-xl font-bold leading-tight line-clamp-2">{art.title}</h4>
+                         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4 md:p-6">
+                            <span className="text-[9px] font-mono text-[var(--accent)] uppercase tracking-[0.3em] font-bold mb-1">Featured Artifact</span>
+                            <h4 className="text-white font-display text-sm md:text-base font-bold leading-tight line-clamp-2">{art.title}</h4>
                             <div className="h-0 group-hover/art:h-6 transition-all duration-300 opacity-0 group-hover/art:opacity-100 flex items-center mt-2">
                                <span className="text-white text-[10px] font-mono uppercase tracking-widest">Get Access →</span>
                             </div>
@@ -587,12 +642,12 @@ export default function App() {
                     
                     {/* Visual Pulse / Ripple */}
                     <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
-                       <div className="w-[300px] h-[300px] md:w-[450px] md:h-[450px] rounded-full border border-[var(--accent)]/30 animate-ripple"></div>
-                       <div className="absolute w-[300px] h-[300px] md:w-[450px] md:h-[450px] rounded-full border border-[var(--accent)]/10 animate-ripple" style={{ animationDelay: '1.5s' }}></div>
+                       <div className="w-[220px] h-[220px] md:w-[320px] md:h-[320px] rounded-full border border-[var(--accent)]/30 animate-ripple"></div>
+                       <div className="absolute w-[220px] h-[220px] md:w-[320px] md:h-[320px] rounded-full border border-[var(--accent)]/10 animate-ripple" style={{ animationDelay: '1.5s' }}></div>
                     </div>
                   </div>
                 ) : (
-                  <div className="relative w-56 h-56 md:w-72 md:h-72 flex items-center justify-center">
+                  <div className="relative w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 flex items-center justify-center">
                     <div className="absolute inset-0 rounded-full border-2 border-[var(--accent)]/20 animate-ripple"></div>
                     <div className="relative z-10 w-full h-full overflow-hidden border-4 border-white p-1 bg-black shadow-2xl rounded-2xl">
                       <img 
@@ -608,8 +663,8 @@ export default function App() {
         </div>
         
         {/* Filters */}
-        <div className="max-w-7xl mx-auto mt-24">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-20">
+        <div className="max-w-7xl mx-auto mt-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
             <div className="flex flex-wrap gap-2">
               {['all', 'pdf', 'site'].map(type => (
                 <button 
@@ -678,12 +733,12 @@ export default function App() {
               {/* Carousel Container */}
               <div 
                 ref={carouselRef}
-                className={`flex gap-8 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-4 -my-4 ${filteredProducts.length <= 4 ? 'md:justify-center' : ''}`}
+                className={`flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory py-4 -my-4 ${filteredProducts.length <= 4 ? 'md:justify-center' : ''}`}
               >
                 {filteredProducts.map(product => (
                   <div 
                     key={product.id} 
-                    className="w-[280px] sm:w-[calc(50%-16px)] lg:w-[calc(25%-24px)] shrink-0 snap-start"
+                    className="w-[210px] sm:w-[220px] md:w-[230px] lg:w-[240px] shrink-0 snap-start"
                   >
                     <ProductCard product={product} observe={observe} onPreview={setSelectedProduct} onSave={setPurchaseModalProduct} />
                   </div>
@@ -709,10 +764,10 @@ export default function App() {
             <div className="inline-block px-3 py-1 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full mb-6">
               <span className="text-[var(--accent)] text-[10px] font-mono font-bold tracking-widest uppercase">✦ Featured Artifact</span>
             </div>
-            <h2 className="font-display text-5xl md:text-7xl text-white font-bold mb-8 leading-tight">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-white mb-6 leading-tight tracking-tight">
               {adminData.netflixShowcase.title}
             </h2>
-            <p className="text-gray-400 text-xl mb-12 font-light leading-relaxed">
+            <p className="text-gray-400 text-base sm:text-lg mb-8 font-light leading-relaxed">
               {adminData.netflixShowcase.subtitle}
             </p>
             
@@ -856,7 +911,7 @@ export default function App() {
               <div className="inline-block px-3 py-1 bg-[#00b9f5]/10 border border-[#00b9f5]/20 rounded-full mb-6">
                 <span className="text-[#00b9f5] text-[10px] font-mono font-bold tracking-widest uppercase">✦ Secure Gifting Standard</span>
               </div>
-              <h2 className="font-display text-4xl md:text-6xl font-black mb-6 tracking-tight leading-none text-white">
+              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-6 tracking-tight leading-tight text-white">
                 {adminData.paytmShowcase?.title || 'The Paytm Secured Birthday Scan'}
               </h2>
               <p className="text-gray-400 text-base md:text-lg mb-8 leading-relaxed font-medium">
@@ -1015,7 +1070,7 @@ export default function App() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
                 <div>
                      <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">✦ How it Works</span>
-                     <h2 className="font-display text-5xl md:text-7xl font-black mb-12 leading-tight" dangerouslySetInnerHTML={{ __html: adminData.howItWorks.title.replace('\n', '<br/>') }}></h2>
+                     <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-6 leading-tight tracking-tight" dangerouslySetInnerHTML={{ __html: adminData.howItWorks.title.replace('\n', '<br/>') }}></h2>
                      <div className="space-y-12">
                          {adminData.howItWorks.steps.map(step => (
                              <div key={step.num} className="flex gap-8 group">
@@ -1039,10 +1094,10 @@ export default function App() {
 
 
       {/* Pricing - Light */}
-      <section id="pricing" ref={observe} className="py-40 section-light relative">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center mb-24">
+      <section id="pricing" ref={observe} className="py-20 md:py-24 section-light relative">
+        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center mb-12">
             <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">{adminData.pricing?.tagline || '✦ Beta Access'}</span>
-            <h2 className="font-display text-6xl md:text-8xl font-black mb-6" dangerouslySetInnerHTML={{ __html: (adminData.pricing?.title || 'Built for <br/>Lovers, by Lovers.').replace(/\n/g, '<br/>') }}></h2>
+            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-6 leading-tight tracking-tight" dangerouslySetInnerHTML={{ __html: (adminData.pricing?.title || 'Built for <br/>Lovers, by Lovers.').replace(/\n/g, '<br/>') }}></h2>
             <p className="text-gray-500 text-xl font-medium">{adminData.pricing?.subtitle || 'Currently in Private Beta. All artifacts are available for free.'}</p>
         </div>
 
@@ -1057,7 +1112,12 @@ export default function App() {
               )}
             </div>
             <ul className="space-y-4 mb-12">
-              {['Signature PDF Layout', 'Instant Source Access', 'Print-ready Assets', 'Basic Customization'].map(f => (
+              {(adminData.pricing?.tier1Features || [
+                'Signature PDF Layout',
+                'Instant Source Access',
+                'Print-ready Assets',
+                'Basic Customization'
+              ]).map(f => (
                 <li key={f} className="flex gap-3 text-sm text-gray-500 font-bold">
                   <span className="text-[#FF3B3B]">✦</span> {f}
                 </li>
@@ -1066,7 +1126,7 @@ export default function App() {
             <button 
               onClick={() => {
                 const pdf = products.find(p => p.type === 'pdf');
-                if (pdf) setPurchaseModalProduct(pdf);
+                if (pdf) setPurchaseModalProduct({ ...pdf, price: adminData.pricing?.tier1Price || pdf.price, original: adminData.pricing?.tier1OriginalPrice || pdf.original });
                 else setPurchaseModalProduct({
                   id: 'pdf-fallback',
                   title: 'Signature PDF Layout',
@@ -1093,7 +1153,13 @@ export default function App() {
               )}
             </div>
             <ul className="space-y-4 mb-12">
-              {['Netflix Site Bundle', 'Full JSX Components', 'Interactive Profiles', 'Live Preview Hosting', 'Priority Support'].map(f => (
+              {(adminData.pricing?.tier2Features || [
+                'Netflix Site Bundle',
+                'Full JSX Components',
+                'Interactive Profiles',
+                'Live Preview Hosting',
+                'Priority Support'
+              ]).map(f => (
                 <li key={f} className="flex gap-3 text-sm text-gray-400 font-bold">
                   <span className="text-[#FF3B3B]">✦</span> {f}
                 </li>
@@ -1102,7 +1168,7 @@ export default function App() {
             <button 
               onClick={() => {
                 const netflix = products.find(p => p.title.toLowerCase().includes('netflix'));
-                if (netflix) setPurchaseModalProduct(netflix);
+                if (netflix) setPurchaseModalProduct({ ...netflix, price: adminData.pricing?.tier2Price || netflix.price, original: adminData.pricing?.tier2OriginalPrice || netflix.original });
                 else setPurchaseModalProduct({
                   id: 'netflix-showcase',
                   title: adminData.netflixShowcase.title,
@@ -1127,7 +1193,12 @@ export default function App() {
               )}
             </div>
             <ul className="space-y-4 mb-12">
-              {['Complete Collection Access', 'Exclusive Beta Templates', 'Private Community', 'Early Access to Updates'].map(f => (
+              {(adminData.pricing?.tier3Features || [
+                'Complete Collection Access',
+                'Exclusive Beta Templates',
+                'Private Community',
+                'Early Access to Updates'
+              ]).map(f => (
                 <li key={f} className="flex gap-3 text-sm text-gray-500 font-bold">
                   <span className="text-[#FF3B3B]">✦</span> {f}
                 </li>

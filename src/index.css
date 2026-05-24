@@ -16,10 +16,15 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    font-size: 90%;
   }
   
   body {
     @apply bg-dark text-white antialiased overflow-x-hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-size: 0.8em;
   }
 
   /* Grain overlay */

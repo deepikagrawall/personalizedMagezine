@@ -861,6 +861,75 @@ export const AdminSidePanel = ({
                              />
                          </div>
                      </div>
+
+                     <div className="space-y-2">
+                         <label className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Pricing Features</label>
+                         <div className="space-y-2">
+                             {(localData?.pricing?.tier1Features || [
+                               'Signature PDF Layout',
+                               'Instant Source Access',
+                               'Print-ready Assets',
+                               'Basic Customization'
+                             ]).map((feat: string, idx: number) => (
+                                 <div key={idx} className="flex gap-2">
+                                     <input 
+                                         className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white text-xs outline-none focus:border-[var(--accent)]"
+                                         value={feat}
+                                         onChange={e => {
+                                             const newFeats = [...(localData?.pricing?.tier1Features || [
+                                               'Signature PDF Layout',
+                                               'Instant Source Access',
+                                               'Print-ready Assets',
+                                               'Basic Customization'
+                                             ])];
+                                             newFeats[idx] = e.target.value;
+                                             setLocalData({
+                                                 ...localData,
+                                                 pricing: { ...(localData?.pricing || {}), tier1Features: newFeats }
+                                             });
+                                         }}
+                                     />
+                                     <button 
+                                         type="button"
+                                         onClick={() => {
+                                             const newFeats = [...(localData?.pricing?.tier1Features || [
+                                               'Signature PDF Layout',
+                                               'Instant Source Access',
+                                               'Print-ready Assets',
+                                               'Basic Customization'
+                                             ])];
+                                             newFeats.splice(idx, 1);
+                                             setLocalData({
+                                                 ...localData,
+                                                 pricing: { ...(localData?.pricing || {}), tier1Features: newFeats }
+                                             });
+                                         }}
+                                         className="text-red-400 hover:text-red-500 text-xs px-2"
+                                     >
+                                         ✕
+                                     </button>
+                                 </div>
+                             ))}
+                             <button
+                                 type="button"
+                                 onClick={() => {
+                                     const newFeats = [...(localData?.pricing?.tier1Features || [
+                                       'Signature PDF Layout',
+                                       'Instant Source Access',
+                                       'Print-ready Assets',
+                                       'Basic Customization'
+                                     ]), ''];
+                                     setLocalData({
+                                         ...localData,
+                                         pricing: { ...(localData?.pricing || {}), tier1Features: newFeats }
+                                     });
+                                 }}
+                                 className="text-[10px] font-mono text-[var(--accent)] hover:underline block"
+                             >
+                                 + Add Feature
+                             </button>
+                         </div>
+                     </div>
                   </div>
 
                   {/* Tier 2 */}
@@ -890,6 +959,79 @@ export const AdminSidePanel = ({
                              />
                          </div>
                      </div>
+
+                     <div className="space-y-2">
+                         <label className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Pricing Features</label>
+                         <div className="space-y-2">
+                             {(localData?.pricing?.tier2Features || [
+                               'Netflix Site Bundle',
+                               'Full JSX Components',
+                               'Interactive Profiles',
+                               'Live Preview Hosting',
+                               'Priority Support'
+                             ]).map((feat: string, idx: number) => (
+                                 <div key={idx} className="flex gap-2">
+                                     <input 
+                                         className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white text-xs outline-none focus:border-[var(--accent)]"
+                                         value={feat}
+                                         onChange={e => {
+                                             const newFeats = [...(localData?.pricing?.tier2Features || [
+                                               'Netflix Site Bundle',
+                                               'Full JSX Components',
+                                               'Interactive Profiles',
+                                               'Live Preview Hosting',
+                                               'Priority Support'
+                                             ])];
+                                             newFeats[idx] = e.target.value;
+                                             setLocalData({
+                                                 ...localData,
+                                                 pricing: { ...(localData?.pricing || {}), tier2Features: newFeats }
+                                             });
+                                         }}
+                                     />
+                                     <button 
+                                         type="button"
+                                         onClick={() => {
+                                             const newFeats = [...(localData?.pricing?.tier2Features || [
+                                               'Netflix Site Bundle',
+                                               'Full JSX Components',
+                                               'Interactive Profiles',
+                                               'Live Preview Hosting',
+                                               'Priority Support'
+                                             ])];
+                                             newFeats.splice(idx, 1);
+                                             setLocalData({
+                                                 ...localData,
+                                                 pricing: { ...(localData?.pricing || {}), tier2Features: newFeats }
+                                             });
+                                         }}
+                                         className="text-red-400 hover:text-red-500 text-xs px-2"
+                                     >
+                                         ✕
+                                     </button>
+                                 </div>
+                             ))}
+                             <button
+                                 type="button"
+                                 onClick={() => {
+                                     const newFeats = [...(localData?.pricing?.tier2Features || [
+                                       'Netflix Site Bundle',
+                                       'Full JSX Components',
+                                       'Interactive Profiles',
+                                       'Live Preview Hosting',
+                                       'Priority Support'
+                                     ]), ''];
+                                     setLocalData({
+                                         ...localData,
+                                         pricing: { ...(localData?.pricing || {}), tier2Features: newFeats }
+                                     });
+                                 }}
+                                 className="text-[10px] font-mono text-[var(--accent)] hover:underline block"
+                             >
+                                 + Add Feature
+                             </button>
+                         </div>
+                     </div>
                   </div>
 
                   {/* Tier 3 */}
@@ -917,6 +1059,75 @@ export const AdminSidePanel = ({
                                    pricing: { ...(localData?.pricing || {}), tier3OriginalPrice: e.target.value }
                                  })}
                              />
+                         </div>
+                     </div>
+
+                     <div className="space-y-2">
+                         <label className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">Pricing Features</label>
+                         <div className="space-y-2">
+                             {(localData?.pricing?.tier3Features || [
+                               'Complete Collection Access',
+                               'Exclusive Beta Templates',
+                               'Private Community',
+                               'Early Access to Updates'
+                             ]).map((feat: string, idx: number) => (
+                                 <div key={idx} className="flex gap-2">
+                                     <input 
+                                         className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-1.5 text-white text-xs outline-none focus:border-[var(--accent)]"
+                                         value={feat}
+                                         onChange={e => {
+                                             const newFeats = [...(localData?.pricing?.tier3Features || [
+                                               'Complete Collection Access',
+                                               'Exclusive Beta Templates',
+                                               'Private Community',
+                                               'Early Access to Updates'
+                                             ])];
+                                             newFeats[idx] = e.target.value;
+                                             setLocalData({
+                                                 ...localData,
+                                                 pricing: { ...(localData?.pricing || {}), tier3Features: newFeats }
+                                             });
+                                         }}
+                                     />
+                                     <button 
+                                         type="button"
+                                         onClick={() => {
+                                             const newFeats = [...(localData?.pricing?.tier3Features || [
+                                               'Complete Collection Access',
+                                               'Exclusive Beta Templates',
+                                               'Private Community',
+                                               'Early Access to Updates'
+                                             ])];
+                                             newFeats.splice(idx, 1);
+                                             setLocalData({
+                                                 ...localData,
+                                                 pricing: { ...(localData?.pricing || {}), tier3Features: newFeats }
+                                             });
+                                         }}
+                                         className="text-red-400 hover:text-red-500 text-xs px-2"
+                                     >
+                                         ✕
+                                     </button>
+                                 </div>
+                             ))}
+                             <button
+                                 type="button"
+                                 onClick={() => {
+                                     const newFeats = [...(localData?.pricing?.tier3Features || [
+                                       'Complete Collection Access',
+                                       'Exclusive Beta Templates',
+                                       'Private Community',
+                                       'Early Access to Updates'
+                                     ]), ''];
+                                     setLocalData({
+                                         ...localData,
+                                         pricing: { ...(localData?.pricing || {}), tier3Features: newFeats }
+                                     });
+                                 }}
+                                 className="text-[10px] font-mono text-[var(--accent)] hover:underline block"
+                             >
+                                 + Add Feature
+                             </button>
                          </div>
                      </div>
                   </div>

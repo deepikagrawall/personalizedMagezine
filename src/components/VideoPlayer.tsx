@@ -6,6 +6,8 @@ interface VideoPlayerProps {
 
 export const VideoPlayer = ({ url }: VideoPlayerProps) => {
   if (!url) return null;
+
+  // Handle YouTube
   const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
   if (isYouTube) {
     let embedUrl = url;
@@ -31,6 +33,34 @@ export const VideoPlayer = ({ url }: VideoPlayerProps) => {
     );
   }
 
+  // Handle Google Drive
+  const isDrive = url.includes('drive.google.com');
+  if (isDrive) {
+    // Try to extract file ID
+    let fileId = '';
+    if (url.includes('/d/')) {
+      fileId = url.split('/d/')[1]?.split('/')[0];
+    } else if (url.includes('id=')) {
+      fileId = url.split('id=')[1]?.split('&')[0];
+    }
+
+    if (fileId) {
+      const embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+      return (
+        <div className="w-full h-[320px] md:h-[480px] bg-black rounded-lg overflow-hidden shadow-2xl relative">
+          <iframe 
+            src={embedUrl}
+            className="w-full h-full border-0"
+            allow="autoplay; fullscreen"
+            allowFullScreen
+            title="Video Walkthrough"
+          />
+        </div>
+      );
+    }
+  }
+
+  // Handle direct video file
   return (
     <div className="w-full bg-black rounded-lg overflow-hidden shadow-2xl relative">
       <video 
