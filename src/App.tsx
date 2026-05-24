@@ -490,38 +490,45 @@ export default function App() {
               <span className="text-[10px] font-mono font-bold tracking-[0.3em] text-[#888] uppercase">{adminData.heroTagline}</span>
             </div>
             
-            <h1 className="flex flex-col text-white mb-3 tracking-tighter">
-              <div className="overflow-hidden">
-                <motion.span 
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
-                  className="block font-display text-5xl sm:text-8xl md:text-[94px] font-black leading-[0.78]"
-                >
-                  {adminData.heroTitlePart1}
-                </motion.span>
-              </div>
-              <div className="overflow-hidden mt-[1px]">
-                <motion.span 
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-                  className="block font-display text-4xl sm:text-7xl md:text-[84px] font-black leading-[0.78]"
-                >
-                  {adminData.heroTitlePart2}
-                </motion.span>
-              </div>
-              <div className="overflow-hidden mt-[1px]">
-                <motion.span 
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-                  className="block font-display text-4xl sm:text-7xl md:text-[84px] italic text-[var(--accent)] leading-[0.78]"
-                >
-                  {adminData.heroTitlePart3}
-                </motion.span>
-              </div>
-            </h1>
+            <h1 className="flex flex-col text-white mb-3 tracking-tight gap-[1px]">
+  
+  {/* FIRST LINE - reduced by 10% */}
+  <div className="overflow-hidden">
+    <motion.span 
+      initial={{ y: "100%", opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      className="block font-display text-5xl sm:text-7xl md:text-[84px] font-black leading-[0.92]"
+    >
+      {adminData.heroTitlePart1}
+    </motion.span>
+  </div>
+
+  {/* SECOND LINE - reduced by 10% */}
+  <div className="overflow-hidden">
+    <motion.span 
+      initial={{ y: "100%", opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+      className="block font-display text-4xl sm:text-6xl md:text-[76px] font-black leading-[0.92]"
+    >
+      {adminData.heroTitlePart2}
+    </motion.span>
+  </div>
+
+  {/* THIRD LINE - unchanged */}
+  <div className="overflow-hidden">
+    <motion.span 
+      initial={{ y: "100%", opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
+      className="block font-display text-4xl sm:text-7xl md:text-[84px] italic text-[var(--accent)] leading-[0.92]"
+    >
+      {adminData.heroTitlePart3}
+    </motion.span>
+  </div>
+
+</h1>
 
             <p className="text-[#888] text-sm sm:text-base md:text-[17px] max-w-xl mb-6 font-light leading-relaxed animate-[fadeIn_1.5s_ease-out_0.6s_forwards] opacity-0">
               {adminData.heroDescription}
@@ -755,23 +762,40 @@ export default function App() {
       </section>
 
       {/* Netflix Experience Showcase */}
-      <section id="netflix-sites" ref={observe} className="py-16 md:py-20 pb-12 px-6 md:px-12 section-dark grain relative overflow-hidden">
+      <section id="netflix-sites" ref={observe} className="py-10 md:py-12 pb-6 px-6 md:px-12 section-dark grain relative overflow-hidden">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_100%_0%,rgba(var(--accent-rgb),0.1),transparent)] pointer-events-none"></div>
         
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row gap-20 items-center mb-16">
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-start mb-8">
             <div className="w-full lg:w-5/12">
-            <div className="inline-block px-3 py-1 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full mb-6">
+            <div className="inline-block px-3 py-1 bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-full mb-4">
               <span className="text-[var(--accent)] text-[10px] font-mono font-bold tracking-widest uppercase">✦ Featured Artifact</span>
             </div>
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black text-white mb-6 leading-tight tracking-tight">
+            <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-black text-white mb-4 leading-tight tracking-tight">
               {adminData.netflixShowcase.title}
             </h2>
-            <p className="text-gray-400 text-base sm:text-lg mb-8 font-light leading-relaxed">
+            <p className="text-gray-400 text-sm sm:text-base mb-6 font-light leading-relaxed">
               {adminData.netflixShowcase.subtitle}
             </p>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-10 gap-x-12 mb-16">
+            <div className="flex items-center gap-6 mb-6 bg-red-950/20 border border-[#E50914]/20 rounded-2xl p-4">
+              <div className="flex flex-col text-left">
+                <span className="text-[9px] font-mono text-[#E50914] uppercase tracking-widest">PROMOTIONAL OFFER</span>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-[#E50914] text-3xl font-mono font-black">{adminData.netflixShowcase.price || '₹149'}</span>
+                  <span className="text-gray-500 text-sm line-through font-mono">{adminData.netflixShowcase.originalPrice || '₹999'}</span>
+                </div>
+              </div>
+              <div className="h-10 w-[1px] bg-white/10" />
+              <div className="text-left">
+                <span className="text-[9px] font-mono text-gray-400 uppercase tracking-widest">DEPLOYMENT STATUS</span>
+                <p className="text-white text-xs font-bold leading-none mt-1.5 flex items-center gap-1.5 font-mono">
+                  <span className="w-2 h-2 rounded-full bg-[#E50914] animate-pulse inline-block" /> CINEMATIC CONNECTED
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 mb-6">
               {adminData.netflixShowcase.features.map((feature, i) => (
                   <div key={i} className="space-y-3 group/feat">
                   <div className="flex items-center gap-3">
@@ -784,11 +808,38 @@ export default function App() {
             </div>
           </div>
 
-          <div className="w-full lg:w-7/12">
-             <div className="w-full grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[800px]">
+          <div className="w-full lg:w-7/12 flex flex-col gap-6">
+             <div className="flex justify-end select-none">
+                  <button 
+                      onClick={() => {
+                          const netflix = products.find(p => p.title.toLowerCase().includes('netflix'));
+                          if (netflix) {
+                              setPurchaseModalProduct({
+                                  id: netflix.id,
+                                  title: netflix.title,
+                                  price: netflix.price,
+                                  original: netflix.original,
+                                  category: netflix.category
+                              });
+                          } else {
+                              setPurchaseModalProduct({
+                                  id: 'netflix-showcase',
+                                  title: adminData.netflixShowcase.title,
+                                  price: adminData.netflixShowcase.price,
+                                  original: adminData.netflixShowcase.originalPrice,
+                                  category: 'Anniversary Sites'
+                              });
+                          }
+                      }}
+                      className="bg-[var(--accent)] text-white px-8 py-4 rounded-xl text-lg font-bold hover:opacity-95 transition-all shadow-[0_15px_30px_rgba(var(--accent-rgb),0.3)] active:scale-[0.98] cursor-pointer inline-flex items-center gap-2"
+                  >
+                      Get the Netflix Template →
+                  </button>
+             </div>
+             <div className="w-full grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[550px]">
                 {/* Hero Slot */}
                 <div 
-                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/60"
                     onClick={() => {
                         setLightboxSection('netflix');
                         setLightboxIndex(0);
@@ -804,7 +855,7 @@ export default function App() {
                 
                 {/* Portrait Slot 1 */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/60"
                     onClick={() => {
                         setLightboxSection('netflix');
                         setLightboxIndex(1);
@@ -820,7 +871,7 @@ export default function App() {
 
                 {/* Portrait Slot 2 */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/60"
                     onClick={() => {
                         setLightboxSection('netflix');
                         setLightboxIndex(2);
@@ -836,7 +887,7 @@ export default function App() {
 
                 {/* Square Slot */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/60"
                     onClick={() => {
                         setLightboxSection('netflix');
                         setLightboxIndex(3);
@@ -852,7 +903,7 @@ export default function App() {
 
                 {/* Wide Slot */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/40"
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#E50914]/10 hover:border-[#E50914]/30 hover:shadow-[0_0_25px_rgba(229,9,20,0.15)] cursor-pointer shadow-2xl transition-all duration-500 bg-black/60"
                     onClick={() => {
                         setLightboxSection('netflix');
                         setLightboxIndex(4);
@@ -868,57 +919,29 @@ export default function App() {
              </div>
           </div>
         </div>
-
-        <div className="text-center flex flex-col items-center justify-center mt-4">
-             <button 
-                 onClick={() => {
-                     const netflix = products.find(p => p.title.toLowerCase().includes('netflix'));
-                     if (netflix) {
-                         setPurchaseModalProduct({
-                             id: netflix.id,
-                             title: netflix.title,
-                             price: netflix.price,
-                             original: netflix.original,
-                             category: netflix.category
-                         });
-                     } else {
-                         setPurchaseModalProduct({
-                             id: 'netflix-showcase',
-                             title: adminData.netflixShowcase.title,
-                             price: adminData.netflixShowcase.price,
-                             original: adminData.netflixShowcase.originalPrice,
-                             category: 'Anniversary Sites'
-                         });
-                     }
-                 }}
-                 className="bg-[var(--accent)] text-white px-12 py-5 rounded-lg text-xl font-bold hover:opacity-90 transition-all shadow-[0_20px_40px_rgba(var(--accent-rgb),0.4)] active:scale-[0.98] cursor-pointer"
-             >
-                 Get the Netflix Template →
-             </button>
-        </div>
       </div>
     </section>
 
       {/* Paytm Secured Birthday Scan Showcase */}
-      <section id="paytm-sites" ref={observe} className="py-16 md:py-20 pb-12 px-6 md:px-12 bg-[#010915] text-white grain relative border-t border-b border-white/5 overflow-hidden">
+      <section id="paytm-sites" ref={observe} className="py-10 md:py-12 pb-6 px-6 md:px-12 bg-[#010915] text-white grain relative border-t border-b border-white/5 overflow-hidden">
         <div className="absolute top-0 left-0 w-1/2 h-full bg-[radial-gradient(circle_at_0%_0%,rgba(0,185,245,0.07),transparent)] pointer-events-none"></div>
         <div className="absolute top-0 right-0 w-1/2 h-full bg-[radial-gradient(circle_at_100%_100%,rgba(0,41,112,0.1),transparent)] pointer-events-none"></div>
         
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col lg:flex-row-reverse gap-20 items-center mb-16">
-            {/* Column 1: Info (now on the right visually due to flex-row-reverse) */}
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-start mb-8">
+            {/* Column 1: Info (now on the left visually) */}
             <div className="w-full lg:w-5/12">
-              <div className="inline-block px-3 py-1 bg-[#00b9f5]/10 border border-[#00b9f5]/20 rounded-full mb-6">
+              <div className="inline-block px-3 py-1 bg-[#00b9f5]/10 border border-[#00b9f5]/20 rounded-full mb-4">
                 <span className="text-[#00b9f5] text-[10px] font-mono font-bold tracking-widest uppercase">✦ Secure Gifting Standard</span>
               </div>
-              <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-6 tracking-tight leading-tight text-white">
+              <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-black mb-4 tracking-tight leading-tight text-white">
                 {adminData.paytmShowcase?.title || 'The Paytm Secured Birthday Scan'}
               </h2>
-              <p className="text-gray-400 text-base md:text-lg mb-8 leading-relaxed font-medium">
+              <p className="text-gray-400 text-sm sm:text-base mb-6 leading-relaxed font-medium">
                 {adminData.paytmShowcase?.subtitle || 'Surprise them with a fully responsive Paytm-themed scan & gift experience. Scan a QR to reveal beautiful childhood memories, custom soundbox audio alerts, and a personalized secret UPI voucher!'}
               </p>
               
-              <div className="flex items-center gap-6 mb-8 bg-[#002970]/30 border border-[#00b9f5]/10 rounded-2xl p-6">
+              <div className="flex items-center gap-6 mb-6 bg-[#002970]/30 border border-[#00b9f5]/10 rounded-2xl p-4">
                 <div className="flex flex-col text-left">
                   <span className="text-[9px] font-mono text-[#00b9f5] uppercase tracking-widest">PROMOTIONAL OFFER</span>
                   <div className="flex items-baseline gap-2 mt-1">
@@ -935,9 +958,9 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-8 mb-6">
                 {(adminData.paytmShowcase?.features || []).map((feature, index) => (
-                  <div key={index} className="flex flex-col gap-1 text-left">
+                  <div key={index} className="space-y-3 text-left">
                     <div className="flex items-center gap-3">
                       <PaytmFeatureIcon emoji={feature.emoji} />
                       <h4 className="text-white font-bold text-sm uppercase tracking-widest">{feature.title}</h4>
@@ -949,11 +972,38 @@ export default function App() {
             </div>
 
             {/* Column 2: Bento Grid Visuals (now on the left visually) */}
-            <div className="w-full lg:w-7/12">
-              <div className="w-full grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[800px]">
+            <div className="w-full lg:w-7/12 flex flex-col gap-6">
+              <div className="flex justify-end select-none">
+                  <button 
+                      onClick={() => {
+                          const paytm = products.find(p => p.title.toLowerCase().includes('paytm'));
+                          if (paytm) {
+                              setPurchaseModalProduct({
+                                  id: paytm.id,
+                                  title: paytm.title,
+                                  price: paytm.price,
+                                  original: paytm.original,
+                                  category: paytm.category
+                              });
+                          } else {
+                              setPurchaseModalProduct({
+                                  id: 'paytm-showcase',
+                                  title: adminData.paytmShowcase?.title || 'Paytm Birthday Scan',
+                                  price: adminData.paytmShowcase?.price || 'FREE',
+                                  original: adminData.paytmShowcase?.originalPrice || '₹999',
+                                  category: 'Anniversary Sites'
+                              });
+                          }
+                      }}
+                      className="bg-[#002970] text-white border border-[#00b9f5]/30 px-8 py-4 rounded-xl text-lg font-bold hover:bg-[#001f57] hover:border-[#00b9f5]/60 transition-all shadow-[0_15px_30px_rgba(0,185,245,0.1)] active:scale-[0.98] cursor-pointer inline-flex items-center gap-2"
+                  >
+                      Get the Paytm Template →
+                  </button>
+              </div>
+              <div className="w-full grid grid-cols-2 md:grid-cols-6 grid-rows-none md:grid-rows-6 gap-4 h-auto md:h-[550px]">
                 {/* Hero Slot */}
                 <div 
-                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    className="col-span-2 md:col-span-4 md:row-span-4 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/60 hover:border-[#00b9f5]/30 transition-all duration-500"
                     onClick={() => {
                         setLightboxSection('paytm');
                         setLightboxIndex(0);
@@ -969,7 +1019,7 @@ export default function App() {
                 
                 {/* Portrait Slot 1 */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/60 hover:border-[#00b9f5]/30 transition-all duration-500"
                     onClick={() => {
                         setLightboxSection('paytm');
                         setLightboxIndex(1);
@@ -985,7 +1035,7 @@ export default function App() {
 
                 {/* Portrait Slot 2 */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    className="col-span-1 md:col-span-2 md:row-span-3 aspect-[3/4] md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/60 hover:border-[#00b9f5]/30 transition-all duration-500"
                     onClick={() => {
                         setLightboxSection('paytm');
                         setLightboxIndex(2);
@@ -1001,7 +1051,7 @@ export default function App() {
 
                 {/* Square Slot */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-square md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/60 hover:border-[#00b9f5]/30 transition-all duration-500"
                     onClick={() => {
                         setLightboxSection('paytm');
                         setLightboxIndex(3);
@@ -1017,7 +1067,7 @@ export default function App() {
 
                 {/* Wide Slot */}
                 <div 
-                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/40 hover:border-[#00b9f5]/30 transition-all duration-500"
+                    className="col-span-1 md:col-span-2 md:row-span-2 aspect-video md:aspect-auto group relative rounded-3xl overflow-hidden border border-[#00b9f5]/10 cursor-pointer shadow-2xl bg-black/60 hover:border-[#00b9f5]/30 transition-all duration-500"
                     onClick={() => {
                         setLightboxSection('paytm');
                         setLightboxIndex(4);
@@ -1033,34 +1083,6 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="text-center flex flex-col items-center justify-center mt-4">
-             <button 
-                 onClick={() => {
-                     const paytm = products.find(p => p.title.toLowerCase().includes('paytm'));
-                     if (paytm) {
-                         setPurchaseModalProduct({
-                             id: paytm.id,
-                             title: paytm.title,
-                             price: paytm.price,
-                             original: paytm.original,
-                             category: paytm.category
-                         });
-                     } else {
-                         setPurchaseModalProduct({
-                             id: 'paytm-showcase',
-                             title: adminData.paytmShowcase?.title || 'Paytm Birthday Scan',
-                             price: adminData.paytmShowcase?.price || 'FREE',
-                             original: adminData.paytmShowcase?.originalPrice || '₹999',
-                             category: 'Anniversary Sites'
-                         });
-                     }
-                 }}
-                 className="bg-[#002970] text-white border border-[#00b9f5]/30 px-12 py-5 rounded-lg text-xl font-bold hover:bg-[#001f57] hover:border-[#00b9f5]/60 transition-all shadow-[0_20px_40px_rgba(0,185,245,0.15)] active:scale-[0.98] cursor-pointer"
-             >
-                 Get the Paytm Template →
-             </button>
         </div>
       </section>
 
