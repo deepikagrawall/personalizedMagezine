@@ -97,13 +97,67 @@ export const Admin = () => {
     pricing: {
       tagline: '✦ Beta Access',
       title: 'Built for \nLovers, by Lovers.',
-      subtitle: 'Currently in Private Beta. All artifacts are available for free.',
+      subtitle: 'Currently in Private Beta.',
       tier1Price: 'Free',
       tier1OriginalPrice: '₹499',
       tier2Price: 'Free',
       tier2OriginalPrice: '₹1499',
       tier3Price: 'Free',
       tier3OriginalPrice: '₹4999',
+    },
+    navbar: {
+      logoText: 'ARTIFACT',
+      logoTagline: 'FOR MOMENTS THAT MATTER',
+      showLogoTagline: true,
+      ctaEnabled: true,
+      ctaText: 'Get Started',
+      ctaLink: '#pricing',
+      secondaryCtaEnabled: true,
+      secondaryCtaText: 'Browse All',
+      secondaryCtaLink: '#templates',
+      links: [
+        { id: 'templates', name: 'Templates', url: '#templates', show: true, parentId: '', target: '_self' },
+        { id: 'netflix-sites', name: 'Netflix Sites', url: '#netflix-sites', show: true, parentId: '', target: '_self' },
+        { id: 'pricing', name: 'Pricing', url: '#pricing', show: true, parentId: '', target: '_self' },
+        { id: 'about', name: 'About', url: '#about', show: true, parentId: '', target: '_self' }
+      ]
+    },
+    footer: {
+      tagline: 'The world\'s premium marketplace for digital anniversary templates and cinematic story websites.',
+      copyright: '© 2026 ARTIFACT. Made with ❤️ for moments that matter.',
+      newsletterEnabled: true,
+      newsletterHeading: 'Stay Updated',
+      newsletterDescription: 'Get early access to private beta releases & exclusive templates.',
+      newsletterPlaceholder: 'your@email.com',
+      newsletterButtonText: '→',
+      contactDetails: {
+        email: 'hello@artifact.com',
+        phone: '+91 99999 99999',
+        address: 'Designed in India. Serving memory makers worldwide.',
+        showContact: true
+      },
+      socialLinks: [
+        { id: 'instagram', platform: 'Instagram', url: '#', show: true },
+        { id: 'twitter', platform: 'Twitter', url: '#', show: true },
+        { id: 'pinterest', platform: 'Pinterest', url: '#', show: true }
+      ],
+      columns: [
+        {
+          id: 'col1',
+          title: 'Connect',
+          links: [
+            { label: 'Templates', url: '#templates' },
+            { label: 'Netflix Sites', url: '#netflix-sites' },
+            { label: 'How It Works', url: '#how-it-works' },
+            { label: 'Pricing', url: '#pricing' }
+          ]
+        }
+      ],
+      legalLinks: [
+        { label: 'Privacy', url: '#' },
+        { label: 'Terms', url: '#' },
+        { label: 'Refund Policy', url: '#' }
+      ]
     }
   });
   const [heroFiles, setHeroFiles] = useState<File[]>([]);
@@ -163,7 +217,9 @@ export const Admin = () => {
           paytmShowcase: dbData.paytmShowcase ? { ...prev.paytmShowcase, ...dbData.paytmShowcase } : prev.paytmShowcase,
           howItWorks: dbData.howItWorks ? { ...prev.howItWorks, ...dbData.howItWorks } : prev.howItWorks,
           curatedSelection: dbData.curatedSelection ? { ...prev.curatedSelection, ...dbData.curatedSelection } : prev.curatedSelection,
-          pricing: dbData.pricing ? { ...prev.pricing, ...dbData.pricing } : prev.pricing
+          pricing: dbData.pricing ? { ...prev.pricing, ...dbData.pricing } : prev.pricing,
+          navbar: dbData.navbar ? { ...prev.navbar, ...dbData.navbar } : prev.navbar,
+          footer: dbData.footer ? { ...prev.footer, ...dbData.footer } : prev.footer
         }));
       }
     });
@@ -268,9 +324,21 @@ export const Admin = () => {
     if (e) e.preventDefault();
     setUploading(true);
     try {
+      const cleanedPricing = { ...(heroForm.pricing || {}) };
+      if (Array.isArray(cleanedPricing.tier1Features)) {
+        cleanedPricing.tier1Features = cleanedPricing.tier1Features.map((f: string) => f.trim()).filter((f: string) => f !== '');
+      }
+      if (Array.isArray(cleanedPricing.tier2Features)) {
+        cleanedPricing.tier2Features = cleanedPricing.tier2Features.map((f: string) => f.trim()).filter((f: string) => f !== '');
+      }
+      if (Array.isArray(cleanedPricing.tier3Features)) {
+        cleanedPricing.tier3Features = cleanedPricing.tier3Features.map((f: string) => f.trim()).filter((f: string) => f !== '');
+      }
+
       const { setDoc } = await import('firebase/firestore');
       await setDoc(doc(db, 'settings', 'hero'), {
          ...heroForm,
+         pricing: cleanedPricing,
          updatedAt: serverTimestamp()
       });
       alert('Success! Site content synchronized across all user devices.');
@@ -472,6 +540,252 @@ export const Admin = () => {
     }
   };
 
+  // NAVBAR state modifiers
+  const addNavbarLink = () => {
+    const currentNav = heroForm.navbar || { links: [] };
+    const currentLinks = currentNav.links || [];
+    const newLink = {
+      id: `link-${Date.now()}`,
+      name: 'New Link',
+      url: '#',
+      show: true,
+      parentId: '',
+      target: '_self'
+    };
+    setHeroForm({
+      ...heroForm,
+      navbar: {
+        ...currentNav,
+        links: [...currentLinks, newLink]
+      }
+    });
+  };
+
+  const deleteNavbarLink = (id: string) => {
+    const currentNav = heroForm.navbar || { links: [] };
+    const currentLinks = currentNav.links || [];
+    setHeroForm({
+      ...heroForm,
+      navbar: {
+        ...currentNav,
+        links: currentLinks.filter((l: any) => l.id !== id)
+      }
+    });
+  };
+
+  const updateNavbarLink = (id: string, field: string, value: any) => {
+    const currentNav = heroForm.navbar || { links: [] };
+    const currentLinks = currentNav.links || [];
+    setHeroForm({
+      ...heroForm,
+      navbar: {
+        ...currentNav,
+        links: currentLinks.map((l: any) => l.id === id ? { ...l, [field]: value } : l)
+      }
+    });
+  };
+
+  const moveNavbarLink = (index: number, direction: 'up' | 'down') => {
+    const currentNav = heroForm.navbar || { links: [] };
+    const links = [...(currentNav.links || [])];
+    if (direction === 'up' && index > 0) {
+      const temp = links[index];
+      links[index] = links[index - 1];
+      links[index - 1] = temp;
+    } else if (direction === 'down' && index < links.length - 1) {
+      const temp = links[index];
+      links[index] = links[index + 1];
+      links[index + 1] = temp;
+    }
+    setHeroForm({
+      ...heroForm,
+      navbar: {
+        ...currentNav,
+        links
+      }
+    });
+  };
+
+  // FOOTER state modifiers
+  const addFooterColumn = () => {
+    const currFooter = heroForm.footer || { columns: [] };
+    const cols = currFooter.columns || [];
+    const newCol = {
+      id: `col-${Date.now()}`,
+      title: 'New Column',
+      links: [{ label: 'Link 1', url: '#' }]
+    };
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        columns: [...cols, newCol]
+      }
+    });
+  };
+
+  const deleteFooterColumn = (id: string) => {
+    const currFooter = heroForm.footer || { columns: [] };
+    const cols = currFooter.columns || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        columns: cols.filter((c: any) => c.id !== id)
+      }
+    });
+  };
+
+  const updateFooterColumnTitle = (id: string, title: string) => {
+    const currFooter = heroForm.footer || { columns: [] };
+    const cols = currFooter.columns || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        columns: cols.map((c: any) => c.id === id ? { ...c, title } : c)
+      }
+    });
+  };
+
+  const addFooterColumnLink = (colId: string) => {
+    const currFooter = heroForm.footer || { columns: [] };
+    const cols = currFooter.columns || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        columns: cols.map((c: any) => {
+          if (c.id === colId) {
+            return {
+              ...c,
+              links: [...(c.links || []), { label: 'New Link', url: '#' }]
+            };
+          }
+          return c;
+        })
+      }
+    });
+  };
+
+  const updateFooterColumnLink = (colId: string, linkIdx: number, field: string, value: string) => {
+    const currFooter = heroForm.footer || { columns: [] };
+    const cols = currFooter.columns || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        columns: cols.map((c: any) => {
+          if (c.id === colId) {
+            const nextLinks = [...(c.links || [])];
+            nextLinks[linkIdx] = { ...nextLinks[linkIdx], [field]: value };
+            return { ...c, links: nextLinks };
+          }
+          return c;
+        })
+      }
+    });
+  };
+
+  const deleteFooterColumnLink = (colId: string, linkIdx: number) => {
+    const currFooter = heroForm.footer || { columns: [] };
+    const cols = currFooter.columns || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        columns: cols.map((c: any) => {
+          if (c.id === colId) {
+            return {
+              ...c,
+              links: (c.links || []).filter((_: any, idx: number) => idx !== linkIdx)
+            };
+          }
+          return c;
+        })
+      }
+    });
+  };
+
+  const updateSocialLink = (id: string, field: string, value: any) => {
+    const currFooter = heroForm.footer || { socialLinks: [] };
+    const socials = currFooter.socialLinks || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        socialLinks: socials.map((s: any) => s.id === id ? { ...s, [field]: value } : s)
+      }
+    });
+  };
+
+  const addSocialLink = () => {
+    const currFooter = heroForm.footer || { socialLinks: [] };
+    const socials = currFooter.socialLinks || [];
+    const newSocial = {
+      id: `soc-${Date.now()}`,
+      platform: 'Instagram',
+      url: '#',
+      show: true
+    };
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        socialLinks: [...socials, newSocial]
+      }
+    });
+  };
+
+  const deleteSocialLink = (id: string) => {
+    const currFooter = heroForm.footer || { socialLinks: [] };
+    const socials = currFooter.socialLinks || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        socialLinks: socials.filter((s: any) => s.id !== id)
+      }
+    });
+  };
+
+  const updateLegalLink = (idx: number, field: string, value: string) => {
+    const currFooter = heroForm.footer || { legalLinks: [] };
+    const legals = [...(currFooter.legalLinks || [])];
+    legals[idx] = { ...legals[idx], [field]: value };
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        legalLinks: legals
+      }
+    });
+  };
+
+  const addLegalLink = () => {
+    const currFooter = heroForm.footer || { legalLinks: [] };
+    const legals = currFooter.legalLinks || [];
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        legalLinks: [...legals, { label: 'New Policy', url: '#' }]
+      }
+    });
+  };
+
+  const deleteLegalLink = (idx: number) => {
+    const currFooter = heroForm.footer || { legalLinks: [] };
+    const legals = (currFooter.legalLinks || []).filter((_: any, i: number) => i !== idx);
+    setHeroForm({
+      ...heroForm,
+      footer: {
+        ...currFooter,
+        legalLinks: legals
+      }
+    });
+  };
+
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white font-mono uppercase tracking-widest">Initialising Control Center...</div>;
 
   const isAdmin = user && user.email?.toLowerCase() === 'deeagrawal078@gmail.com';
@@ -555,6 +869,8 @@ export const Admin = () => {
               { id: 'paytm', name: 'Paytm Showcase' },
               { id: 'howItWorks', name: 'How It Works' },
               { id: 'curatedSelection', name: 'Curated' },
+              { id: 'navbar', name: 'Navbar Editor ✦' },
+              { id: 'footer', name: 'Footer Editor ✦' },
             ].map(tab => (
               <button 
                 key={tab.id}
@@ -1036,30 +1352,80 @@ export const Admin = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                   {/* Tier 1 */}
-                  <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-6">
+                  <div className="bg-[#111] p-6 rounded-2xl border border-white/5 space-y-4">
                     <h3 className="text-xs uppercase tracking-[0.1em] font-bold text-[#FF3B3B] font-mono">Tier 1: Artifact Package</h3>
                     <p className="text-[10px] text-gray-500 font-mono leading-relaxed">Unique pricing for local digital artifacts package.</p>
                     
                     <div className="space-y-4">
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Promo Price</label>
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Card Title</label>
                         <input 
-                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono font-bold"
-                          value={heroForm.pricing?.tier1Price || ''}
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier1Title || ''}
+                          placeholder="Artifact"
                           onChange={e => setHeroForm({
                             ...heroForm,
-                            pricing: { ...(heroForm.pricing || {}), tier1Price: e.target.value }
+                            pricing: { ...(heroForm.pricing || {}), tier1Title: e.target.value }
                           })}
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Original (Strike) Price</label>
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Badge Text</label>
                         <input 
-                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono"
-                          value={heroForm.pricing?.tier1OriginalPrice || ''}
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier1Badge || ''}
+                          placeholder="Public Beta"
                           onChange={e => setHeroForm({
                             ...heroForm,
-                            pricing: { ...(heroForm.pricing || {}), tier1OriginalPrice: e.target.value }
+                            pricing: { ...(heroForm.pricing || {}), tier1Badge: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Promo Price</label>
+                          <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono font-bold"
+                            value={heroForm.pricing?.tier1Price || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              pricing: { ...(heroForm.pricing || {}), tier1Price: e.target.value }
+                            })}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Strike Price</label>
+                          <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono"
+                            value={heroForm.pricing?.tier1OriginalPrice || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              pricing: { ...(heroForm.pricing || {}), tier1OriginalPrice: e.target.value }
+                            })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Button Text</label>
+                        <input 
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier1Button || ''}
+                          placeholder="Claim PDF"
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            pricing: { ...(heroForm.pricing || {}), tier1Button: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Features List (one per line)</label>
+                        <textarea 
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-[#FF3B3B] h-28 font-mono leading-normal"
+                          value={Array.isArray(heroForm.pricing?.tier1Features) ? heroForm.pricing.tier1Features.join('\n') : (heroForm.pricing?.tier1Features || '')}
+                          placeholder="Signature PDF Layout&#10;Instant Source Access&#10;Print-ready Assets&#10;Basic Customization"
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            pricing: { ...(heroForm.pricing || {}), tier1Features: e.target.value.split('\n') }
                           })}
                         />
                       </div>
@@ -1067,31 +1433,81 @@ export const Admin = () => {
                   </div>
 
                   {/* Tier 2 */}
-                  <div className="bg-[#111] p-8 rounded-2xl border border-[#FF3B3B]/20 space-y-6 relative overflow-hidden">
+                  <div className="bg-[#111] p-6 rounded-2xl border border-[#FF3B3B]/20 space-y-4 relative overflow-hidden">
                     <div className="absolute top-0 right-0 bg-[#FF3B3B] text-white text-[8px] font-bold px-3 py-1 uppercase tracking-widest font-mono">POPULAR</div>
                     <h3 className="text-xs uppercase tracking-[0.1em] font-bold text-[#FF3B3B] font-mono">Tier 2: Experience Package</h3>
                     <p className="text-[10px] text-gray-500 font-mono leading-relaxed">Unique pricing for immersive showcase apps (Netflix, Paytm).</p>
 
                     <div className="space-y-4">
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Promo Price</label>
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Card Title</label>
                         <input 
-                          className="w-full bg-black border border-[#FF3B3B]/30 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono font-bold"
-                          value={heroForm.pricing?.tier2Price || ''}
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier2Title || ''}
+                          placeholder="Experience"
                           onChange={e => setHeroForm({
                             ...heroForm,
-                            pricing: { ...(heroForm.pricing || {}), tier2Price: e.target.value }
+                            pricing: { ...(heroForm.pricing || {}), tier2Title: e.target.value }
                           })}
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Original (Strike) Price</label>
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Badge Text</label>
                         <input 
-                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono"
-                          value={heroForm.pricing?.tier2OriginalPrice || ''}
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier2Badge || ''}
+                          placeholder="Premium"
                           onChange={e => setHeroForm({
                             ...heroForm,
-                            pricing: { ...(heroForm.pricing || {}), tier2OriginalPrice: e.target.value }
+                            pricing: { ...(heroForm.pricing || {}), tier2Badge: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Promo Price</label>
+                          <input 
+                            className="w-full bg-black border border-[#FF3B3B]/30 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono font-bold"
+                            value={heroForm.pricing?.tier2Price || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              pricing: { ...(heroForm.pricing || {}), tier2Price: e.target.value }
+                            })}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Strike Price</label>
+                          <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono"
+                            value={heroForm.pricing?.tier2OriginalPrice || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              pricing: { ...(heroForm.pricing || {}), tier2OriginalPrice: e.target.value }
+                            })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Button Text</label>
+                        <input 
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier2Button || ''}
+                          placeholder="Get Netflix Site"
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            pricing: { ...(heroForm.pricing || {}), tier2Button: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Features List (one per line)</label>
+                        <textarea 
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-[#FF3B3B] h-28 font-mono leading-normal"
+                          value={Array.isArray(heroForm.pricing?.tier2Features) ? heroForm.pricing.tier2Features.join('\n') : (heroForm.pricing?.tier2Features || '')}
+                          placeholder="Netflix Site Bundle&#10;Full JSX Components&#10;Interactive Profiles&#10;Live Preview Hosting&#10;Priority Support"
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            pricing: { ...(heroForm.pricing || {}), tier2Features: e.target.value.split('\n') }
                           })}
                         />
                       </div>
@@ -1099,30 +1515,80 @@ export const Admin = () => {
                   </div>
 
                   {/* Tier 3 */}
-                  <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-6">
+                  <div className="bg-[#111] p-6 rounded-2xl border border-white/5 space-y-4">
                     <h3 className="text-xs uppercase tracking-[0.1em] font-bold text-[#FF3B3B] font-mono">Tier 3: The Private Vault</h3>
                     <p className="text-[10px] text-gray-500 font-mono leading-relaxed">Unique pricing for standard ultimate custom requests tier.</p>
 
                     <div className="space-y-4">
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Promo Price</label>
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Card Title</label>
                         <input 
-                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono font-bold"
-                          value={heroForm.pricing?.tier3Price || ''}
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier3Title || ''}
+                          placeholder="The Vault"
                           onChange={e => setHeroForm({
                             ...heroForm,
-                            pricing: { ...(heroForm.pricing || {}), tier3Price: e.target.value }
+                            pricing: { ...(heroForm.pricing || {}), tier3Title: e.target.value }
                           })}
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Original (Strike) Price</label>
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Badge Text</label>
                         <input 
-                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono"
-                          value={heroForm.pricing?.tier3OriginalPrice || ''}
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier3Badge || ''}
+                          placeholder="Public Beta"
                           onChange={e => setHeroForm({
                             ...heroForm,
-                            pricing: { ...(heroForm.pricing || {}), tier3OriginalPrice: e.target.value }
+                            pricing: { ...(heroForm.pricing || {}), tier3Badge: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Promo Price</label>
+                          <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono font-bold"
+                            value={heroForm.pricing?.tier3Price || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              pricing: { ...(heroForm.pricing || {}), tier3Price: e.target.value }
+                            })}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Strike Price</label>
+                          <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B] font-mono"
+                            value={heroForm.pricing?.tier3OriginalPrice || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              pricing: { ...(heroForm.pricing || {}), tier3OriginalPrice: e.target.value }
+                            })}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Button Text</label>
+                        <input 
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.pricing?.tier3Button || ''}
+                          placeholder="Enter The Vault"
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            pricing: { ...(heroForm.pricing || {}), tier3Button: e.target.value }
+                          })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] uppercase tracking-widest text-gray-500 font-mono">Features List (one per line)</label>
+                        <textarea 
+                          className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-[#FF3B3B] h-28 font-mono leading-normal"
+                          value={Array.isArray(heroForm.pricing?.tier3Features) ? heroForm.pricing.tier3Features.join('\n') : (heroForm.pricing?.tier3Features || '')}
+                          placeholder="Complete Collection Access&#10;Exclusive Beta Templates&#10;Private Community&#10;Early Access to Updates"
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            pricing: { ...(heroForm.pricing || {}), tier3Features: e.target.value.split('\n') }
                           })}
                         />
                       </div>
@@ -1576,6 +2042,659 @@ export const Admin = () => {
                              UPLOADING COVER...
                           </div>
                         )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'navbar' && (
+              <div className="animate-[fadeIn_0.3s_ease-out] space-y-8">
+                <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <span className="text-[#FF3B3B]">✦</span> Dynamic Header Configuration
+                  </h2>
+                  <button onClick={() => handleSyncSettings()} disabled={uploading} className="bg-[#FF3B3B] text-white px-6 py-2.5 rounded-xl text-xs font-mono uppercase tracking-widest font-bold disabled:opacity-55 hover:bg-red-600 transition-all shadow-[0_4px_20px_rgba(255,59,59,0.2)]">
+                    {uploading ? 'Synchronizing...' : 'Sync Header Terminals'}
+                  </button>
+                </div>
+
+                {/* Live Preview Display Card */}
+                <div className="bg-[#111] p-6 rounded-2xl border border-white/5 space-y-4">
+                  <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                    <span className="text-[9px] font-mono tracking-widest text-[#FF3B3B] uppercase font-bold">Terminal Live Preview</span>
+                    <span className="text-[9px] font-mono text-gray-600 uppercase">Synchronized with edit state</span>
+                  </div>
+                  
+                  <div className="border border-white/10 rounded-xl bg-[#030303] p-4 flex items-center justify-between text-white relative min-h-16 overflow-visible">
+                    {/* Mock logo */}
+                    <div className="flex flex-col">
+                      <span className="font-display text-base italic font-black text-white leading-none">
+                        {heroForm.navbar?.logoText || heroForm.siteName || 'ARTIFACT'}<span className="text-[var(--accent)]">.</span>
+                      </span>
+                      {heroForm.navbar?.showLogoTagline !== false && (
+                        <span className="text-[6px] font-mono tracking-[0.2em] text-gray-500 mt-1 uppercase">
+                          {heroForm.navbar?.logoTagline || 'FOR MOMENTS THAT MATTER'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Mock center links */}
+                    <div className="hidden md:flex items-center gap-4 text-xs">
+                      {(heroForm.navbar?.links || [])
+                        .filter((l: any) => l.show !== false && !l.parentId)
+                        .map((link: any) => {
+                          const subs = (heroForm.navbar?.links || []).filter((item: any) => item.parentId === link.id && item.show !== false);
+                          return (
+                            <div key={link.id} className="relative group/mock">
+                              <span className="text-gray-400 hover:text-white cursor-pointer py-1 font-semibold flex items-center gap-1">
+                                {link.name}
+                                {subs.length > 0 && <span className="text-[8px] opacity-70">▼</span>}
+                              </span>
+                              {subs.length > 0 && (
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 bg-[#0C0C0C]/95 border border-white/10 rounded-lg p-2 min-w-[120px] shadow-2xl space-y-1 blur-none">
+                                  {subs.map((s: any) => (
+                                    <span key={s.id} className="block text-[10px] text-left px-2 py-1 text-gray-400 font-semibold">{s.name}</span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+
+                    {/* Mock Action CTAs */}
+                    <div className="flex items-center gap-3">
+                      {heroForm.navbar?.secondaryCtaEnabled !== false && (
+                        <span className="hidden md:inline-block text-[10px] px-3 py-1.5 border border-white/10 rounded text-gray-400">{heroForm.navbar?.secondaryCtaText || 'Browse All'}</span>
+                      )}
+                      {heroForm.navbar?.ctaEnabled !== false && (
+                        <span className="text-[10px] px-3 py-1.5 rounded text-white bg-[var(--accent)] font-semibold">{heroForm.navbar?.ctaText || 'Get Started'}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Brand and Actions */}
+                  <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-6">
+                    <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B] border-b border-white/5 pb-2">Brand Identity & Action Buttons</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Logo Text</label>
+                          <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                            value={heroForm.navbar?.logoText || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              navbar: { ...(heroForm.navbar || {}), logoText: e.target.value }
+                            })}
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Logo Tagline</label>
+                          <input 
+                            className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                            value={heroForm.navbar?.logoTagline || ''}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              navbar: { ...(heroForm.navbar || {}), logoTagline: e.target.value }
+                            })}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-2">
+                        <input
+                          type="checkbox"
+                          id="showLogoTagline"
+                          checked={heroForm.navbar?.showLogoTagline !== false}
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            navbar: { ...(heroForm.navbar || {}), showLogoTagline: e.target.checked }
+                          })}
+                          className="w-4 h-4 accent-[#FF3B3B]"
+                        />
+                        <label htmlFor="showLogoTagline" className="text-xs text-gray-400 font-mono">Show/Render customizable tagline on Navbar</label>
+                      </div>
+
+                      {/* Primary CTA button config */}
+                      <div className="border-t border-white/5 pt-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-white">Primary Action Button (CTA)</span>
+                          <input 
+                            type="checkbox"
+                            checked={heroForm.navbar?.ctaEnabled !== false}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              navbar: { ...(heroForm.navbar || {}), ctaEnabled: e.target.checked }
+                            })}
+                            className="accent-[#FF3B3B]"
+                          />
+                        </div>
+                        {heroForm.navbar?.ctaEnabled !== false && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Label Text</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.navbar?.ctaText || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  navbar: { ...(heroForm.navbar || {}), ctaText: e.target.value }
+                                })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Redirect URL / Anchor</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.navbar?.ctaLink || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  navbar: { ...(heroForm.navbar || {}), ctaLink: e.target.value }
+                                })}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Secondary CTA button config */}
+                      <div className="border-t border-white/5 pt-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold text-white">Secondary Action Button</span>
+                          <input 
+                            type="checkbox"
+                            checked={heroForm.navbar?.secondaryCtaEnabled !== false}
+                            onChange={e => setHeroForm({
+                              ...heroForm,
+                              navbar: { ...(heroForm.navbar || {}), secondaryCtaEnabled: e.target.checked }
+                            })}
+                            className="accent-[#FF3B3B]"
+                          />
+                        </div>
+                        {heroForm.navbar?.secondaryCtaEnabled !== false && (
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Label Text</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.navbar?.secondaryCtaText || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  navbar: { ...(heroForm.navbar || {}), secondaryCtaText: e.target.value }
+                                })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Redirect URL</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-2.5 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.navbar?.secondaryCtaLink || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  navbar: { ...(heroForm.navbar || {}), secondaryCtaLink: e.target.value }
+                                })}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dynamic links collection */}
+                  <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-6">
+                    <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                      <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B]">Navigation Directory Links</h3>
+                      <button 
+                        onClick={addNavbarLink}
+                        className="text-[10px] font-mono uppercase font-bold text-[#FF3B3B] border border-[#FF3B3B]/20 bg-[#FF3B3B]/5 px-3 py-1 rounded-lg hover:bg-[#FF3B3B] hover:text-white transition-colors"
+                      >
+                        + Add link
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
+                      {(heroForm.navbar?.links || []).map((link: any, idx: number) => {
+                        const otherLinks = (heroForm.navbar?.links || []).filter((l: any) => l.id !== link.id && !l.parentId);
+                        return (
+                          <div key={link.id} className="bg-black/50 border border-white/5 p-4 rounded-xl space-y-3 relative group">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-mono text-gray-400 font-bold">Menu item #{idx + 1}</span>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => moveNavbarLink(idx, 'up')}
+                                  disabled={idx === 0}
+                                  className="text-[10px] text-gray-500 hover:text-white disabled:opacity-30"
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => moveNavbarLink(idx, 'down')}
+                                  disabled={idx === (heroForm.navbar?.links || []).length - 1}
+                                  className="text-[10px] text-gray-500 hover:text-white disabled:opacity-30"
+                                >
+                                  ▼
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={() => deleteNavbarLink(link.id)}
+                                  className="text-[10px] text-gray-500 hover:text-[#FF3B3B] font-mono shrink-0 ml-1 font-bold"
+                                >
+                                  ✕ Remove
+                                </button>
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[9px] uppercase tracking-widest text-[#555] font-mono">Display Name</label>
+                                <input 
+                                  className="w-full bg-black/60 border border-white/5 rounded p-2 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                  value={link.name}
+                                  onChange={e => updateNavbarLink(link.id, 'name', e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[9px] uppercase tracking-widest text-[#555] font-mono">Redirect URL</label>
+                                <input 
+                                  className="w-full bg-black/60 border border-white/5 rounded p-2 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                  value={link.url}
+                                  onChange={e => updateNavbarLink(link.id, 'url', e.target.value)}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 pt-1">
+                              <div>
+                                <label className="text-[9px] uppercase tracking-widest text-[#444] font-mono block mb-1">Visibility</label>
+                                <select 
+                                  className="w-full bg-black border border-white/10 rounded p-1.5 text-[10px] outline-none"
+                                  value={link.show !== false ? 'true' : 'false'}
+                                  onChange={e => updateNavbarLink(link.id, 'show', e.target.value === 'true')}
+                                >
+                                  <option value="true">Show Active</option>
+                                  <option value="false">Hidden</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[9px] uppercase tracking-widest text-[#444] font-mono block mb-1">Target Window</label>
+                                <select 
+                                  className="w-full bg-black border border-white/10 rounded p-1.5 text-[10px] outline-none"
+                                  value={link.target || '_self'}
+                                  onChange={e => updateNavbarLink(link.id, 'target', e.target.value)}
+                                >
+                                  <option value="_self">Current Tab</option>
+                                  <option value="_blank">New Tab</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[9px] uppercase tracking-widest text-[#444] font-mono block mb-1">Parent Category Menu</label>
+                                <select
+                                  className="w-full bg-black border border-white/10 rounded p-1.5 text-[10px] outline-none text-gray-300"
+                                  value={link.parentId || ''}
+                                  onChange={e => updateNavbarLink(link.id, 'parentId', e.target.value)}
+                                >
+                                  <option value="">Main (No Parent)</option>
+                                  {otherLinks.map((ol: any) => (
+                                    <option key={ol.id} value={ol.id}>{ol.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'footer' && (
+              <div className="animate-[fadeIn_0.3s_ease-out] space-y-8">
+                <div className="flex justify-between items-center pb-4 border-b border-white/5">
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <span className="text-[#FF3B3B]">✦</span> Dynamic Footer Configuration
+                  </h2>
+                  <button onClick={() => handleSyncSettings()} disabled={uploading} className="bg-[#FF3B3B] text-white px-6 py-2.5 rounded-xl text-xs font-mono uppercase tracking-widest font-bold disabled:opacity-55 hover:bg-red-600 transition-all shadow-[0_4px_20px_rgba(255,59,59,0.2)]">
+                    {uploading ? 'Synchronizing...' : 'Sync Footer Terminals'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Left Column: General Branding & Newsletter */}
+                  <div className="space-y-8">
+                    {/* Foot Branding panel */}
+                    <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-5">
+                      <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B] border-b border-white/5 pb-1">Footer Branding & Copyright</h3>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Footer Logo Text (Overriding text header)</label>
+                        <input 
+                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.footer?.logoText || ''}
+                          placeholder={heroForm.navbar?.logoText || heroForm.siteName}
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            footer: { ...(heroForm.footer || {}), logoText: e.target.value }
+                          })}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Company tagline (Supports rich texts splitting paragraphs on line break)</label>
+                        <textarea 
+                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B] h-28"
+                          value={heroForm.footer?.tagline || ''}
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            footer: { ...(heroForm.footer || {}), tagline: e.target.value }
+                          })}
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Copyright Label Notice</label>
+                        <input 
+                          className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-sm outline-none focus:border-[#FF3B3B]"
+                          value={heroForm.footer?.copyright || ''}
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            footer: { ...(heroForm.footer || {}), copyright: e.target.value }
+                          })}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Newsletter section panel */}
+                    <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-4">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B]">Newsletter Module</h3>
+                        <input
+                          type="checkbox"
+                          checked={heroForm.footer?.newsletterEnabled !== false}
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            footer: { ...(heroForm.footer || {}), newsletterEnabled: e.target.checked }
+                          })}
+                          className="accent-[#FF3B3B] w-4 h-4"
+                        />
+                      </div>
+
+                      {heroForm.footer?.newsletterEnabled !== false && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Module Heading</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.footer?.newsletterHeading || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  footer: { ...(heroForm.footer || {}), newsletterHeading: e.target.value }
+                                })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Placeholder Text</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.footer?.newsletterPlaceholder || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  footer: { ...(heroForm.footer || {}), newsletterPlaceholder: e.target.value }
+                                })}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Description text</label>
+                            <input 
+                              className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-xs outline-none"
+                              value={heroForm.footer?.newsletterDescription || ''}
+                              onChange={e => setHeroForm({
+                                ...heroForm,
+                                footer: { ...(heroForm.footer || {}), newsletterDescription: e.target.value }
+                              })}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Contact term section */}
+                    <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-4">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B]">Contact Terminal Info</h3>
+                        <input
+                          type="checkbox"
+                          checked={heroForm.footer?.contactDetails?.showContact !== false}
+                          onChange={e => setHeroForm({
+                            ...heroForm,
+                            footer: { 
+                              ...(heroForm.footer || {}), 
+                              contactDetails: { ...(heroForm.footer?.contactDetails || {}), showContact: e.target.checked }
+                            }
+                          })}
+                          className="accent-[#FF3B3B] w-4 h-4"
+                        />
+                      </div>
+
+                      {heroForm.footer?.contactDetails?.showContact !== false && (
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Email terminal address</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.footer?.contactDetails?.email || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  footer: { 
+                                    ...(heroForm.footer || {}), 
+                                    contactDetails: { ...(heroForm.footer?.contactDetails || {}), email: e.target.value }
+                                  }
+                                })}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Hotline phone</label>
+                              <input 
+                                className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-xs outline-none focus:border-[#FF3B3B]"
+                                value={heroForm.footer?.contactDetails?.phone || ''}
+                                onChange={e => setHeroForm({
+                                  ...heroForm,
+                                  footer: { 
+                                    ...(heroForm.footer || {}), 
+                                    contactDetails: { ...(heroForm.footer?.contactDetails || {}), phone: e.target.value }
+                                  }
+                                })}
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Office Address description</label>
+                            <textarea 
+                              className="w-full bg-black border border-white/10 rounded-lg p-3 text-white text-xs outline-none h-16"
+                              value={heroForm.footer?.contactDetails?.address || ''}
+                              onChange={e => setHeroForm({
+                                ...heroForm,
+                                  footer: { 
+                                    ...(heroForm.footer || {}), 
+                                    contactDetails: { ...(heroForm.footer?.contactDetails || {}), address: e.target.value }
+                                  }
+                              })}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Columns, Social Links & Policies */}
+                  <div className="space-y-8">
+                    {/* Columns manager */}
+                    <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-6">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B]">Directory Map Columns</h3>
+                        <button 
+                          onClick={addFooterColumn}
+                          className="text-[9px] uppercase tracking-[0.2em] font-mono font-bold text-[#FF3B3B]"
+                        >
+                          + Add column
+                        </button>
+                      </div>
+
+                      <div className="space-y-6 max-h-[460px] overflow-y-auto pr-2 no-scrollbar">
+                        {(heroForm.footer?.columns || []).map((col: any) => (
+                          <div key={col.id} className="bg-black border border-white/5 p-4 rounded-xl space-y-4">
+                            <div className="flex justify-between items-center">
+                              <input 
+                                className="bg-transparent text-xs font-mono font-bold uppercase tracking-wider text-[#FF3B3B] border-b border-transparent focus:border-[#FF3B3B]/40 outline-none pb-0.5"
+                                value={col.title}
+                                onChange={e => updateFooterColumnTitle(col.id, e.target.value)}
+                              />
+                              <button 
+                                onClick={() => deleteFooterColumn(col.id)}
+                                className="text-[10px] text-gray-500 hover:text-red-500 font-mono"
+                              >
+                                ✕ Delete Column
+                              </button>
+                            </div>
+
+                            {/* Links checklist inside column */}
+                            <div className="space-y-2">
+                              {(col.links || []).map((link: any, lIdx: number) => (
+                                <div key={lIdx} className="flex gap-2 items-center">
+                                  <input 
+                                    className="bg-black text-[11px] px-2 py-1 rounded w-1/2 border border-white/5 outline-none "
+                                    value={link.label}
+                                    onChange={e => updateFooterColumnLink(col.id, lIdx, 'label', e.target.value)}
+                                    placeholder="Label"
+                                  />
+                                  <input 
+                                    className="bg-black text-[11px] px-2 py-1 rounded w-1/2 border border-white/5 outline-none"
+                                    value={link.url}
+                                    onChange={e => updateFooterColumnLink(col.id, lIdx, 'url', e.target.value)}
+                                    placeholder="URL"
+                                  />
+                                  <button 
+                                    onClick={() => deleteFooterColumnLink(col.id, lIdx)}
+                                    className="text-gray-500 hover:text-red-500 text-xs px-1"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              ))}
+                              <button 
+                                onClick={() => addFooterColumnLink(col.id)}
+                                className="text-[9px] font-mono text-[#444] hover:text-white pt-1 block"
+                              >
+                                + Add child link
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Social networks manager */}
+                    <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-4">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B]">Social Channels</h3>
+                        <button 
+                          onClick={addSocialLink}
+                          className="text-[9px] font-mono text-gray-500 hover:text-[#FF3B3B] uppercase"
+                        >
+                          + Add connection
+                        </button>
+                      </div>
+
+                      <div className="space-y-3 max-h-[220px] overflow-y-auto pr-2 no-scrollbar">
+                        {(heroForm.footer?.socialLinks || []).map((social: any) => (
+                          <div key={social.id} className="flex items-center gap-3 bg-black/60 p-2.5 rounded-lg border border-white/5">
+                            <select 
+                              className="bg-black text-[11px] border border-white/10 rounded p-1 outline-none text-red-500 font-bold"
+                              value={social.platform}
+                              onChange={e => updateSocialLink(social.id, 'platform', e.target.value)}
+                            >
+                              <option value="Instagram">Instagram</option>
+                              <option value="Twitter">Twitter / X</option>
+                              <option value="Pinterest">Pinterest</option>
+                              <option value="YouTube">YouTube</option>
+                              <option value="Facebook">Facebook</option>
+                              <option value="WhatsApp">WhatsApp</option>
+                            </select>
+                            
+                            <input 
+                              className="flex-1 bg-black text-[11px] border border-white/10 rounded p-1 outline-none text-xs"
+                              value={social.url}
+                              onChange={e => updateSocialLink(social.id, 'url', e.target.value)}
+                              placeholder="URL Address"
+                            />
+
+                            <input 
+                              type="checkbox"
+                              checked={social.show !== false}
+                              title="Show platform"
+                              onChange={e => updateSocialLink(social.id, 'show', e.target.checked)}
+                              className="accent-[#FF3B3B]"
+                            />
+
+                            <button 
+                              onClick={() => deleteSocialLink(social.id)}
+                              className="text-red-500/60 hover:text-red-500 text-xs px-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Legal Policies links */}
+                    <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-4">
+                      <div className="flex justify-between items-center border-b border-white/5 pb-2">
+                        <h3 className="text-xs uppercase tracking-widest font-mono font-bold text-[#FF3B3B]">Legal & Privacy policies</h3>
+                        <button 
+                          onClick={addLegalLink}
+                          className="text-[9px] font-mono text-gray-500 hover:text-[#FF3B3B] uppercase"
+                        >
+                          + Add policy
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {(heroForm.footer?.legalLinks || []).map((legal: any, idx: number) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <input 
+                              className="bg-black text-[11px] px-2 py-1.5 rounded w-1/3 border border-white/5 outline-none font-bold"
+                              value={legal.label}
+                              onChange={e => updateLegalLink(idx, 'label', e.target.value)}
+                            />
+                            <input 
+                              className="bg-black text-[11px] px-2 py-1.5 rounded w-2/3 border border-white/5 outline-none"
+                              value={legal.url}
+                              onChange={e => updateLegalLink(idx, 'url', e.target.value)}
+                            />
+                            <button 
+                              onClick={() => deleteLegalLink(idx)}
+                              className="text-gray-500 hover:text-red-500 text-xs px-1"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>

@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageCircle, ChevronLeft, ChevronRight, Instagram, Twitter, Facebook, Youtube, Linkedin, Globe, Mail, Phone, MapPin, Heart } from 'lucide-react';
 import { db, auth } from './lib/firebase';
 import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
@@ -19,6 +19,82 @@ import { PreviewModal } from './components/PreviewModal';
 import { ProductCard } from './components/ProductCard';
 
 // --- DATA ---
+
+const defaultNavbar = {
+  logoText: 'ARTIFACT',
+  logoTagline: 'FOR MOMENTS THAT MATTER',
+  showLogoTagline: true,
+  ctaEnabled: true,
+  ctaText: 'Get Started',
+  ctaLink: '#pricing',
+  secondaryCtaEnabled: true,
+  secondaryCtaText: 'Browse All',
+  secondaryCtaLink: '#templates',
+  links: [
+    { id: 'templates', name: 'Templates', url: '#templates', show: true, parentId: null, target: '_self' },
+    { id: 'netflix-sites', name: 'Netflix Sites', url: '#netflix-sites', show: true, parentId: null, target: '_self' },
+    { id: 'pricing', name: 'Pricing', url: '#pricing', show: true, parentId: null, target: '_self' },
+    { id: 'about', name: 'About', url: '#about', show: true, parentId: null, target: '_self' }
+  ]
+};
+
+const defaultFooter = {
+  tagline: 'The world\'s premium marketplace for digital anniversary templates and cinematic story websites.',
+  copyright: '© 2026 ARTIFACT. Made with ❤️ for moments that matter.',
+  newsletterEnabled: true,
+  newsletterHeading: 'Stay Updated',
+  newsletterDescription: 'Get early access to private beta releases & exclusive templates.',
+  newsletterPlaceholder: 'your@email.com',
+  newsletterButtonText: '→',
+  contactDetails: {
+    email: 'hello@artifact.com',
+    phone: '+91 99999 99999',
+    address: 'Designed in India. Serving memory makers worldwide.',
+    showContact: true
+  },
+  socialLinks: [
+    { id: 'instagram', platform: 'Instagram', url: '#', show: true },
+    { id: 'twitter', platform: 'Twitter', url: '#', show: true },
+    { id: 'pinterest', platform: 'Pinterest', url: '#', show: true }
+  ],
+  columns: [
+    {
+      id: 'col1',
+      title: 'Connect',
+      links: [
+        { label: 'Templates', url: '#templates' },
+        { label: 'Netflix Sites', url: '#netflix-sites' },
+        { label: 'How It Works', url: '#how-it-works' },
+        { label: 'Pricing', url: '#pricing' }
+      ]
+    }
+  ],
+  legalLinks: [
+    { label: 'Privacy', url: '#' },
+    { label: 'Terms', url: '#' },
+    { label: 'Refund Policy', url: '#' }
+  ]
+};
+
+const SocialIcon = ({ platform, className = "w-4 h-4" }: { platform: string; className?: string }) => {
+  const p = platform.toLowerCase();
+  if (p === 'instagram') return <Instagram className={className} />;
+  if (p === 'twitter' || p === 'x') return <Twitter className={className} />;
+  if (p === 'facebook') return <Facebook className={className} />;
+  if (p === 'youtube') return <Youtube className={className} />;
+  if (p === 'linkedin') return <Linkedin className={className} />;
+  if (p === 'whatsapp') return <MessageCircle className={className} />;
+  return <Globe className={className} />;
+};
+
+const renderParagraphs = (text: string) => {
+  if (!text) return null;
+  return text.split('\n').map((p, idx) => (
+    <p key={idx} className="mb-3 last:mb-0 text-[#666] leading-relaxed text-sm">
+      {p}
+    </p>
+  ));
+};
 
 
 // --- HOOKS ---
@@ -224,7 +300,7 @@ export default function App() {
     pricing: {
       tagline: '✦ Beta Access',
       title: 'Built for \nLovers, by Lovers.',
-      subtitle: 'Currently in Private Beta. All artifacts are available for free.',
+      subtitle: 'Currently in Private Beta.',
       tier1Price: 'Free',
       tier1OriginalPrice: '₹499',
       tier2Price: 'Free',
@@ -250,7 +326,9 @@ export default function App() {
         'Private Community',
         'Early Access to Updates'
       ]
-    }
+    },
+    navbar: defaultNavbar,
+    footer: defaultFooter
   });
 
   const observe = useIntersectionObserver();
@@ -299,7 +377,15 @@ export default function App() {
           pricing: data.pricing ? {
             ...prev.pricing,
             ...data.pricing
-          } : prev.pricing
+          } : prev.pricing,
+          navbar: data.navbar ? {
+            ...prev.navbar,
+            ...data.navbar
+          } : prev.navbar || defaultNavbar,
+          footer: data.footer ? {
+            ...prev.footer,
+            ...data.footer
+          } : prev.footer || defaultFooter
         }));
 
         if (data.accentColor) {
@@ -341,6 +427,10 @@ export default function App() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const navbarLinks = adminData.navbar?.links || defaultNavbar.links;
+  const visibleLinks = navbarLinks.filter((l: any) => l.show !== false);
+  const topLinks = visibleLinks.filter((l: any) => !l.parentId);
 
   return (
     <div className="min-h-screen bg-black overflow-x-hidden selection:bg-[var(--accent)] selection:text-white">
@@ -430,29 +520,79 @@ export default function App() {
       <nav className={`fixed top-0 w-full h-16 flex items-center justify-between px-6 md:px-12 z-[100] transition-all duration-300 ${
         scrolled ? 'bg-[#0A0A0A]/90 backdrop-blur-xl border-b border-white/10' : 'bg-transparent'
       }`}>
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo(0,0)}>
-          <span className="font-display text-2xl italic font-black text-white">{adminData.siteName}<span className="text-[var(--accent)]">.</span></span>
+        <div className="flex flex-col cursor-pointer" onClick={() => window.scrollTo(0,0)}>
+          <span className="font-display text-2xl italic font-black text-white leading-none">
+            {adminData.navbar?.logoText || adminData.siteName || 'ARTIFACT'}<span className="text-[var(--accent)]">.</span>
+          </span>
+          {adminData.navbar?.showLogoTagline !== false && (
+            <span className="text-[8px] font-mono tracking-[0.25em] text-gray-500 mt-1 uppercase">
+              {adminData.navbar?.logoTagline || 'FOR MOMENTS THAT MATTER'}
+            </span>
+          )}
         </div>
 
         <div className="hidden md:flex items-center gap-8">
-          {['Templates', 'Netflix Sites', 'Pricing', 'About'].map(link => (
-            <a 
-              key={link} 
-              href={`#${link.toLowerCase().replace(' ', '-')}`}
-              className="text-sm font-medium text-[#888] hover:text-white transition-colors"
-            >
-              {link}
-            </a>
-          ))}
+          {topLinks.map((link: any) => {
+            const children = visibleLinks.filter((item: any) => item.parentId === link.id);
+            const hasChildren = children.length > 0;
+            
+            if (hasChildren) {
+              return (
+                <div key={link.id} className="relative group py-2">
+                  <button className="flex items-center gap-1.5 text-sm font-medium text-[#888] hover:text-white transition-colors cursor-pointer focus:outline-none">
+                    {link.name}
+                    <svg className="w-3 h-3 group-hover:rotate-180 transition-transform duration-300 select-none pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-52 bg-[#0E0E0E] border border-white/10 rounded-xl p-2.5 shadow-2xl opacity-0 -translate-y-2 pointer-events-none group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto transition-all duration-300 z-50">
+                    <div className="space-y-1">
+                      {children.map((child: any) => (
+                        <a
+                          key={child.id}
+                          href={child.url}
+                          target={child.target || '_self'}
+                          className="block text-xs font-semibold px-3 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all"
+                        >
+                          {child.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <a 
+                key={link.id} 
+                href={link.url}
+                target={link.target || '_self'}
+                className="text-sm font-medium text-[#888] hover:text-white transition-colors"
+              >
+                {link.name}
+              </a>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-4">
-          <a href="#templates" className="hidden md:block text-sm font-medium px-5 py-2 border border-[#333] hover:border-white rounded-md transition-colors text-white">
-            Browse All
-          </a>
-          <a href="#pricing" className="bg-[#FF3B3B] text-white text-sm font-medium px-6 py-2 rounded-md transition-transform active:scale-95 shadow-[0_4px_20px_rgba(255,59,59,0.3)]">
-            Get Started
-          </a>
+          {adminData.navbar?.secondaryCtaEnabled !== false && (
+            <a 
+              href={adminData.navbar?.secondaryCtaLink || '#templates'} 
+              className="hidden md:block text-sm font-medium px-5 py-2 border border-[#333] hover:border-white rounded-md transition-colors text-white"
+            >
+              {adminData.navbar?.secondaryCtaText || 'Browse All'}
+            </a>
+          )}
+          {adminData.navbar?.ctaEnabled !== false && (
+            <a 
+              href={adminData.navbar?.ctaLink || '#pricing'} 
+              className="bg-[var(--accent)] text-white text-sm font-medium px-6 py-2 rounded-md transition-transform active:scale-95 shadow-[0_4px_20px_rgba(255,59,59,0.3)]"
+            >
+              {adminData.navbar?.ctaText || 'Get Started'}
+            </a>
+          )}
           
           <button 
             className="md:hidden text-white"
@@ -1089,25 +1229,25 @@ export default function App() {
       {/* How It Works - Light alternate */}
       <section id="about" ref={observe} className="py-16 md:py-24 section-light border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-6 md:px-12">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-24 items-center">
-                <div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-stretch">
+                <div className="flex flex-col justify-center">
                      <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">✦ How it Works</span>
-                     <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-6 leading-tight tracking-tight" dangerouslySetInnerHTML={{ __html: adminData.howItWorks.title.replace('\n', '<br/>') }}></h2>
+                     <h2 className="font-display text-2xl sm:text-3xl md:text-4xl font-black mb-6 leading-tight tracking-tight text-gray-900" dangerouslySetInnerHTML={{ __html: adminData.howItWorks.title.replace('\n', '<br/>') }}></h2>
                      <div className="space-y-12">
                          {adminData.howItWorks.steps.map(step => (
                              <div key={step.num} className="flex gap-8 group">
                                  <span className="font-display text-5xl text-gray-200 group-hover:text-[#FF3B3B] transition-colors">{step.num}</span>
                                  <div>
-                                     <h3 className="text-xl font-bold mb-2">{step.title}</h3>
-                                     <p className="text-gray-500 leading-relaxed font-medium">{step.desc}</p>
+                                     <h3 className="text-lg font-bold mb-2 text-gray-900">{step.title}</h3>
+                                     <p className="text-gray-400 text-xs md:text-sm font-medium leading-relaxed md:max-w-[60%]">{step.desc}</p>
                                  </div>
                              </div>
                          ))}
                      </div>
                 </div>
-                <div className="relative">
-                    <div className="absolute inset-0 bg-gray-200 rounded-3xl transform rotate-3 scale-95 opacity-50"></div>
-                    <img src={adminData.howItWorks.imageUrl} className="w-full aspect-[4/5] object-cover rounded-3xl relative z-10 shadow-2xl" alt="About" />
+                <div className="relative min-h-[300px] lg:min-h-0">
+                    <div className="absolute inset-0 bg-gray-100 rounded-3xl transform rotate-3 scale-[0.97] opacity-60"></div>
+                    <img src={adminData.howItWorks.imageUrl} className="w-full h-full object-cover rounded-3xl lg:absolute lg:inset-0 shadow-2xl relative z-10" alt="About" />
                 </div>
             </div>
         </div>
@@ -1115,32 +1255,40 @@ export default function App() {
 
 
 
-      {/* Pricing - Light */}
-      <section id="pricing" ref={observe} className="py-20 md:py-24 section-light relative">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 text-center mb-12">
-            <span className="font-mono text-[11px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-4 inline-block uppercase">{adminData.pricing?.tagline || '✦ Beta Access'}</span>
-            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl font-black mb-6 leading-tight tracking-tight" dangerouslySetInnerHTML={{ __html: (adminData.pricing?.title || 'Built for <br/>Lovers, by Lovers.').replace(/\n/g, '<br/>') }}></h2>
-            <p className="text-gray-500 text-xl font-medium">{adminData.pricing?.subtitle || 'Currently in Private Beta. All artifacts are available for free.'}</p>
+      <section id="pricing" ref={observe} className="py-12 md:py-16 bg-[#F3F4F6] text-dark relative border-t border-gray-200/50">
+        <div className="max-w-5xl mx-auto px-6 md:px-12 text-center mb-8">
+            <span className="font-mono text-[10px] font-bold text-[#FF3B3B] tracking-[0.2em] mb-3 inline-block uppercase">{adminData.pricing?.tagline || '✦ Beta Access'}</span>
+            <h2 className="font-display text-2xl sm:text-3xl font-black mb-4 leading-tight tracking-tight text-gray-900" dangerouslySetInnerHTML={{ __html: (adminData.pricing?.title || 'Built for Lovers, by Lovers.').replace(/\n|<br\s*\/?>/gi, ' ') }}></h2>
+            {(() => {
+              const baseSubtitle = adminData.pricing?.subtitle || 'Currently in Private Beta.';
+              const cleanedSubtitle = baseSubtitle
+                .replace(/All artifacts are available.*$/gi, '')
+                .replace(/at ₹49\.?/gi, '')
+                .trim();
+              return cleanedSubtitle ? (
+                <p className="text-gray-500 text-sm md:text-base font-medium">{cleanedSubtitle}</p>
+              ) : null;
+            })()}
         </div>
 
-        <div className="max-w-6xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-8 relative z-20">
-          <div className="bg-white border border-gray-100 p-12 rounded-3xl hover:shadow-2xl transition-all relative overflow-hidden group">
-            <div className="absolute top-0 right-0 bg-[#FFD60A] text-black text-[8px] font-bold px-4 py-1.5 uppercase tracking-widest -rotate-45 translate-x-4 translate-y-2">Public Beta</div>
-            <h3 className="text-gray-400 font-mono text-xs tracking-widest mb-6 uppercase italic">Artifact</h3>
-            <div className="flex items-baseline gap-1 mb-8 flex-wrap">
-              <span className="text-dark text-5xl font-mono font-bold">{adminData.pricing?.tier1Price || 'Free'}</span>
+        <div className="max-w-4xl mx-auto px-6 md:px-12 grid grid-cols-1 md:grid-cols-3 gap-6 relative z-20">
+          <div className="bg-white border border-gray-100 p-6 md:p-8 rounded-2xl hover:shadow-xl transition-all relative overflow-hidden group">
+            <div className="absolute top-0 right-0 bg-[#FFD60A] text-black text-[7px] font-bold px-3 py-1 uppercase tracking-widest -rotate-45 translate-x-3 translate-y-1">{adminData.pricing?.tier1Badge || 'Public Beta'}</div>
+            <h3 className="text-gray-400 font-mono text-[10px] tracking-widest mb-4 uppercase italic">{adminData.pricing?.tier1Title || 'Artifact'}</h3>
+            <div className="flex items-baseline gap-1 mb-5 flex-wrap">
+              <span className="text-dark text-4xl font-mono font-bold">{adminData.pricing?.tier1Price || 'Free'}</span>
               {adminData.pricing?.tier1OriginalPrice && (
-                <span className="text-gray-400 line-through text-sm font-mono ml-2">{adminData.pricing.tier1OriginalPrice}</span>
+                <span className="text-gray-400 line-through text-xs font-mono ml-2">{adminData.pricing.tier1OriginalPrice}</span>
               )}
             </div>
-            <ul className="space-y-4 mb-12">
+            <ul className="space-y-3 mb-8">
               {(adminData.pricing?.tier1Features || [
                 'Signature PDF Layout',
                 'Instant Source Access',
                 'Print-ready Assets',
                 'Basic Customization'
               ]).map(f => (
-                <li key={f} className="flex gap-3 text-sm text-gray-500 font-bold">
+                <li key={f} className="flex gap-2.5 text-xs text-gray-500 font-bold">
                   <span className="text-[#FF3B3B]">✦</span> {f}
                 </li>
               ))}
@@ -1151,30 +1299,30 @@ export default function App() {
                 if (pdf) setPurchaseModalProduct({ ...pdf, price: adminData.pricing?.tier1Price || pdf.price, original: adminData.pricing?.tier1OriginalPrice || pdf.original });
                 else setPurchaseModalProduct({
                   id: 'pdf-fallback',
-                  title: 'Signature PDF Layout',
+                  title: adminData.pricing?.tier1Title || 'Signature PDF Layout',
                   price: adminData.pricing?.tier1Price || 'Free',
                   original: adminData.pricing?.tier1OriginalPrice || '₹499',
                   category: 'PDF templates'
                 });
               }}
-              className="w-full border-2 border-dark text-dark py-5 rounded-2xl font-bold hover:bg-dark hover:text-white transition-all"
+              className="w-full border-2 border-dark text-dark py-3.5 rounded-xl text-sm font-bold hover:bg-dark hover:text-white transition-all cursor-pointer"
             >
-              Claim PDF
+              {adminData.pricing?.tier1Button || 'Claim PDF'}
             </button>
           </div>
 
-          <div className="bg-dark text-white p-12 rounded-3xl relative shadow-[0_40px_100px_rgba(0,0,0,0.2)] md:scale-[1.05] z-10 overflow-hidden">
-            <div className="absolute top-0 right-0 p-4">
-                <span className="bg-[#FF3B3B] text-white text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Premium</span>
+          <div className="bg-dark text-white p-6 md:p-8 rounded-2xl relative shadow-[0_30px_70px_rgba(0,0,0,0.15)] md:scale-[1.03] z-10 overflow-hidden">
+            <div className="absolute top-0 right-0 p-3">
+                <span className="bg-[#FF3B3B] text-white text-[8px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-widest">{adminData.pricing?.tier2Badge || 'Premium'}</span>
             </div>
-            <h3 className="text-[#FF3B3B] font-mono text-xs tracking-widest mb-6 uppercase italic">Experience</h3>
-            <div className="flex items-baseline gap-1 mb-8 flex-wrap">
-              <span className="text-white text-5xl font-mono font-bold">{adminData.pricing?.tier2Price || 'Free'}</span>
+            <h3 className="text-[#FF3B3B] font-mono text-[10px] tracking-widest mb-4 uppercase italic">{adminData.pricing?.tier2Title || 'Experience'}</h3>
+            <div className="flex items-baseline gap-1 mb-5 flex-wrap">
+              <span className="text-white text-4xl font-mono font-bold">{adminData.pricing?.tier2Price || 'Free'}</span>
               {adminData.pricing?.tier2OriginalPrice && (
-                <span className="text-gray-500 line-through text-sm font-mono ml-2">{adminData.pricing.tier2OriginalPrice}</span>
+                <span className="text-gray-500 line-through text-xs font-mono ml-2">{adminData.pricing.tier2OriginalPrice}</span>
               )}
             </div>
-            <ul className="space-y-4 mb-12">
+            <ul className="space-y-3 mb-8">
               {(adminData.pricing?.tier2Features || [
                 'Netflix Site Bundle',
                 'Full JSX Components',
@@ -1182,7 +1330,7 @@ export default function App() {
                 'Live Preview Hosting',
                 'Priority Support'
               ]).map(f => (
-                <li key={f} className="flex gap-3 text-sm text-gray-400 font-bold">
+                <li key={f} className="flex gap-2.5 text-xs text-gray-400 font-bold">
                   <span className="text-[#FF3B3B]">✦</span> {f}
                 </li>
               ))}
@@ -1193,44 +1341,44 @@ export default function App() {
                 if (netflix) setPurchaseModalProduct({ ...netflix, price: adminData.pricing?.tier2Price || netflix.price, original: adminData.pricing?.tier2OriginalPrice || netflix.original });
                 else setPurchaseModalProduct({
                   id: 'netflix-showcase',
-                  title: adminData.netflixShowcase.title,
+                  title: adminData.pricing?.tier2Title || adminData.netflixShowcase.title,
                   price: adminData.pricing?.tier2Price || adminData.netflixShowcase.price || 'Free',
                   original: adminData.pricing?.tier2OriginalPrice || adminData.netflixShowcase.originalPrice || '₹1,499',
                   category: 'Anniversary Sites'
                 });
               }}
-              className="w-full bg-[#FF3B3B] text-white py-5 rounded-2xl font-bold hover:scale-[0.98] transition-all shadow-xl"
+              className="w-full bg-[#FF3B3B] text-white py-3.5 rounded-xl text-sm font-bold hover:scale-[0.98] transition-all shadow-xl cursor-pointer"
             >
-              Get Netflix Site
+              {adminData.pricing?.tier2Button || 'Get Netflix Site'}
             </button>
           </div>
 
-          <div className="bg-white border border-gray-100 p-12 rounded-3xl hover:shadow-2xl transition-all relative overflow-hidden group">
-            <div className="absolute top-0 right-0 bg-[#FFD60A] text-black text-[8px] font-bold px-4 py-1.5 uppercase tracking-widest -rotate-45 translate-x-4 translate-y-2">Public Beta</div>
-            <h3 className="text-gray-400 font-mono text-xs tracking-widest mb-6 uppercase italic">The Vault</h3>
-            <div className="flex items-baseline gap-1 mb-8 flex-wrap">
-              <span className="text-dark text-5xl font-mono font-bold">{adminData.pricing?.tier3Price || 'Free'}</span>
+          <div className="bg-white border border-gray-100 p-6 md:p-8 rounded-2xl hover:shadow-xl transition-all relative overflow-hidden group">
+            <div className="absolute top-0 right-0 bg-[#FFD60A] text-black text-[7px] font-bold px-3 py-1 uppercase tracking-widest -rotate-45 translate-x-3 translate-y-1">{adminData.pricing?.tier3Badge || 'Public Beta'}</div>
+            <h3 className="text-gray-400 font-mono text-[10px] tracking-widest mb-4 uppercase italic">{adminData.pricing?.tier3Title || 'The Vault'}</h3>
+            <div className="flex items-baseline gap-1 mb-5 flex-wrap">
+              <span className="text-dark text-4xl font-mono font-bold">{adminData.pricing?.tier3Price || 'Free'}</span>
               {adminData.pricing?.tier3OriginalPrice && (
-                <span className="text-gray-400 line-through text-sm font-mono ml-2">{adminData.pricing.tier3OriginalPrice}</span>
+                <span className="text-gray-400 line-through text-xs font-mono ml-2">{adminData.pricing.tier3OriginalPrice}</span>
               )}
             </div>
-            <ul className="space-y-4 mb-12">
+            <ul className="space-y-3 mb-8">
               {(adminData.pricing?.tier3Features || [
                 'Complete Collection Access',
                 'Exclusive Beta Templates',
                 'Private Community',
                 'Early Access to Updates'
               ]).map(f => (
-                <li key={f} className="flex gap-3 text-sm text-gray-500 font-bold">
+                <li key={f} className="flex gap-2.5 text-xs text-gray-500 font-bold">
                   <span className="text-[#FF3B3B]">✦</span> {f}
                 </li>
               ))}
             </ul>
             <button 
               onClick={() => document.getElementById('collection')?.scrollIntoView({ behavior: 'smooth' })}
-              className="w-full border-2 border-dark text-dark py-5 rounded-2xl font-bold hover:bg-dark hover:text-white transition-all"
+              className="w-full border-2 border-dark text-dark py-3.5 rounded-xl text-sm font-bold hover:bg-dark hover:text-white transition-all cursor-pointer"
             >
-              Enter The Vault
+              {adminData.pricing?.tier3Button || 'Enter The Vault'}
             </button>
           </div>
         </div>
@@ -1253,41 +1401,102 @@ export default function App() {
       <footer className="pt-32 pb-12 px-6 md:px-12 bg-[#0A0A0A] border-t border-white/5">
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-16 mb-24">
           <div className="md:col-span-2">
-            <span className="font-display text-3xl italic font-black text-white mb-6 block">{adminData.siteName}<span className="text-[var(--accent)]">.</span></span>
-            <p className="text-[#666] max-w-[300px] leading-relaxed mb-8">
-              The world's premium marketplace for digital anniversary templates and cinematic story websites.
-            </p>
-            <div className="flex gap-6">
-              {['Instagram', 'Twitter', 'Pinterest'].map(s => (
-                <a key={s} href="#" className="text-xs font-mono uppercase tracking-[0.2em] text-[#444] hover:text-[#FF3B3B] transition-colors">{s}</a>
-              ))}
+            <span className="font-display text-3xl italic font-black text-white mb-6 block">
+              {adminData.footer?.logoText || adminData.navbar?.logoText || adminData.siteName || 'ARTIFACT'}
+              <span className="text-[var(--accent)]">.</span>
+            </span>
+            <div className="mb-8">
+              {renderParagraphs(adminData.footer?.tagline || defaultFooter.tagline)}
             </div>
+            
+            {/* Social Links */}
+            <div className="flex flex-wrap gap-5">
+              {(adminData.footer?.socialLinks || defaultFooter.socialLinks)
+                .filter((s: any) => s.show !== false)
+                .map((social: any) => (
+                  <a 
+                    key={social.id} 
+                    href={social.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    title={social.platform}
+                    className="flex items-center justify-center w-8 h-8 rounded-full bg-white/5 border border-white/10 text-gray-400 hover:text-[var(--accent)] hover:border-[var(--accent)] hover:bg-white/10 hover:scale-110 active:scale-95 transition-all"
+                  >
+                    <SocialIcon platform={social.platform} className="w-4 h-4" />
+                  </a>
+                ))
+              }
+            </div>
+
+            {/* Optional Contact Details */}
+            {adminData.footer?.contactDetails?.showContact !== false && (
+              <div className="space-y-3 pt-6 border-t border-white/5 mt-8 max-w-[320px]">
+                <span className="text-[9px] uppercase font-mono tracking-widest text-[#444] block">Direct Terminal</span>
+                {adminData.footer?.contactDetails?.email && (
+                  <a href={`mailto:${adminData.footer.contactDetails.email}`} className="flex items-center gap-2 text-xs text-[#666] hover:text-white transition-colors">
+                    <Mail className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" /> 
+                    {adminData.footer.contactDetails.email}
+                  </a>
+                )}
+                {adminData.footer?.contactDetails?.phone && (
+                  <a href={`tel:${adminData.footer.contactDetails.phone}`} className="flex items-center gap-2 text-xs text-[#666] hover:text-white transition-colors">
+                    <Phone className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+                    {adminData.footer.contactDetails.phone}
+                  </a>
+                )}
+                {adminData.footer?.contactDetails?.address && (
+                  <div className="flex items-start gap-2 text-xs text-[#555]">
+                    <MapPin className="w-3.5 h-3.5 text-[var(--accent)] shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">{adminData.footer.contactDetails.address}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <div>
-            <h4 className="text-white font-bold mb-8 uppercase text-xs tracking-widest">Connect</h4>
-            <ul className="space-y-4">
-              {['Templates', 'Netflix Sites', 'How It Works', 'Pricing', 'About'].map(l => (
-                <li key={l}><a href={`#${l.toLowerCase().replace(' ', '-')}`} className="text-[#666] hover:text-white transition-colors text-sm">{l}</a></li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-white font-bold mb-8 uppercase text-xs tracking-widest">Stay Updated</h4>
-            <div className="relative mb-6">
-              <input 
-                type="email" 
-                placeholder="your@email.com" 
-                className="w-full bg-transparent border-b border-[#2A2A2A] py-3 text-white text-sm focus:border-[#FF3B3B] outline-none transition-all placeholder:text-[#444]"
-              />
-              <button className="absolute right-0 top-1/2 -translate-y-1/2 text-[#FF3B3B] p-2 hover:scale-125 transition-transform">→</button>
+          {/* Dynamic columns */}
+          {(adminData.footer?.columns || defaultFooter.columns).map((col: any) => (
+            <div key={col.id}>
+              <h4 className="text-white font-bold mb-8 uppercase text-xs tracking-widest">{col.title}</h4>
+              <ul className="space-y-4">
+                {(col.links || []).map((l: any, idx: number) => (
+                  <li key={idx}>
+                    <a href={l.url} className="text-[#666] hover:text-white transition-colors text-sm font-medium">
+                      {l.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
+          ))}
+
+          {/* Newsletter Section */}
+          {adminData.footer?.newsletterEnabled !== false && (
+            <div>
+              <h4 className="text-white font-bold mb-8 uppercase text-xs tracking-widest">
+                {adminData.footer?.newsletterHeading || defaultFooter.newsletterHeading}
+              </h4>
+              <p className="text-[#666] text-xs leading-relaxed mb-6 font-medium">
+                {adminData.footer?.newsletterDescription || defaultFooter.newsletterDescription}
+              </p>
+              <div className="relative mb-6">
+                <input 
+                  type="email" 
+                  placeholder={adminData.footer?.newsletterPlaceholder || defaultFooter.newsletterPlaceholder} 
+                  className="w-full bg-transparent border-b border-[#2A2A2A] py-3 text-white text-sm focus:border-[var(--accent)] outline-none transition-all placeholder:text-[#444] pr-10"
+                />
+                <button className="absolute right-0 top-1/2 -translate-y-1/2 text-[var(--accent)] p-2 hover:scale-125 transition-transform font-bold">
+                  {adminData.footer?.newsletterButtonText || defaultFooter.newsletterButtonText}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="max-w-7xl mx-auto pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
-          <p className="text-[#444] text-[10px] uppercase font-mono tracking-widest">© 2025 {adminData.siteName}. Made with ❤️ for moments that matter.</p>
+          <p className="text-[#444] text-[10px] uppercase font-mono tracking-widest">
+            {adminData.footer?.copyright || `© 2026 ${adminData.siteName}.`}
+          </p>
           <div className="flex items-center gap-8">
             {!user ? (
               <button 
@@ -1304,8 +1513,10 @@ export default function App() {
                 Logout ({user.email})
               </button>
             )}
-            {['Privacy', 'Terms', 'Refund Policy'].map(l => (
-              <a key={l} href="#" className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors">{l}</a>
+            {(adminData.footer?.legalLinks || defaultFooter.legalLinks).map((l: any, idx: number) => (
+              <a key={idx} href={l.url} className="text-[#444] hover:text-white text-[10px] uppercase font-mono tracking-widest transition-colors font-semibold">
+                {l.label}
+              </a>
             ))}
           </div>
         </div>
@@ -1313,29 +1524,81 @@ export default function App() {
 
       {/* Mobile Menu Overlay */}
       {mobileMenuOpen && (
-        <div className="fixed inset-0 bg-[#0A0A0A] z-[500] flex flex-col p-8 md:hidden text-white">
+        <div className="fixed inset-0 bg-[#0A0A0A] z-[500] flex flex-col p-8 md:hidden text-white animate-[fadeIn_0.3s_ease-out]">
           <div className="flex justify-between items-center mb-16">
-            <span className="font-display text-2xl italic font-black text-white">{adminData.siteName}<span className="text-[var(--accent)]">.</span></span>
-            <button onClick={() => setMobileMenuOpen(false)} className="text-white"><svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+            <span className="font-display text-2xl italic font-black text-white">
+              {adminData.navbar?.logoText || adminData.siteName || 'ARTIFACT'}
+              <span className="text-[var(--accent)]">.</span>
+            </span>
+            <button onClick={() => setMobileMenuOpen(false)} className="text-white">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <div className="flex flex-col gap-4">
-            {[
-              { name: 'Templates', target: '#templates' },
-              { name: 'Netflix Sites', target: '#netflix-sites' },
-              { name: 'Pricing', target: '#pricing' },
-              { name: 'About', target: '#about' }
-            ].map(link => (
-              <a 
-                key={link.name} 
-                href={link.target}
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-lg md:text-3xl font-display font-bold text-white hover:text-[var(--accent)] transition-colors active:scale-95 transition-transform origin-left"
-              >
-                {link.name}
-              </a>
-            ))}
+          
+          <div className="flex flex-col gap-6 overflow-y-auto max-h-[60vh] pr-2 no-scrollbar">
+            {topLinks.map((link: any) => {
+              const children = visibleLinks.filter((item: any) => item.parentId === link.id);
+              const hasChildren = children.length > 0;
+
+              return (
+                <div key={link.id} className="flex flex-col gap-2">
+                  {hasChildren ? (
+                    <>
+                      <span className="text-[10px] font-mono tracking-[0.2em] text-gray-500 uppercase font-bold text-left">
+                        {link.name}
+                      </span>
+                      <div className="flex flex-col gap-3.5 pl-4 border-l border-white/10 mt-1">
+                        {children.map((child: any) => (
+                          <a 
+                            key={child.id}
+                            href={child.url}
+                            target={child.target || '_self'}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-lg font-display font-black text-white hover:text-[var(--accent)] transition-colors active:scale-95 transition-transform origin-left text-left"
+                          >
+                            {child.name}
+                          </a>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <a 
+                      href={link.url}
+                      target={link.target || '_self'}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="text-xl font-display font-black text-white hover:text-[var(--accent)] transition-colors active:scale-95 transition-transform origin-left text-left"
+                    >
+                      {link.name}
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+            
+            {/* CTA action buttons in mobile tray */}
+            <div className="flex flex-col gap-3 mt-8 pt-8 border-t border-white/5 shrink-0">
+              {adminData.navbar?.secondaryCtaEnabled !== false && (
+                <a 
+                  href={adminData.navbar?.secondaryCtaLink || '#templates'} 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-center text-sm font-bold py-3.5 border border-[#333] hover:border-white rounded-xl transition-all text-white active:scale-95"
+                >
+                  {adminData.navbar?.secondaryCtaText || 'Browse All'}
+                </a>
+              )}
+              {adminData.navbar?.ctaEnabled !== false && (
+                <a 
+                  href={adminData.navbar?.ctaLink || '#pricing'} 
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-center bg-[var(--accent)] text-white text-sm font-bold py-3.5 rounded-xl transition-transform active:scale-95 shadow-[0_4px_25px_rgba(255,59,59,0.2)]"
+                >
+                  {adminData.navbar?.ctaText || 'Get Started'}
+                </a>
+              )}
+            </div>
           </div>
-          <a href="#pricing" onClick={() => setMobileMenuOpen(false)} className="mt-auto bg-[var(--accent)] text-center text-white py-5 rounded-lg text-xl font-bold">Get Started</a>
         </div>
       )}
 
