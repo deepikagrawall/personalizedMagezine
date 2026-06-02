@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc, addDoc, onSnapshot, serverTimestamp, getDoc, limit, orderBy, increment } from 'firebase/firestore';
 import { useParams, Link } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Clock, Calendar, Share2, Heart, MessageSquare, Send, Check, Copy, Flame, ThumbsUp, AlertCircle, ChevronLeft, ChevronRight, Bookmark, Sparkles, Eye } from 'lucide-react';
 import { BlogNavbar } from './BlogNavbar';
 import { BlogFooter } from './BlogFooter';
+import { formatCount } from '../../utils';
 
 export const BlogDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -15,6 +16,9 @@ export const BlogDetail = () => {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   
+  // Rate-limiting ref for micro-activity protection
+  const reactionCooldownRef = useRef<{ [key: string]: number }>({});
+
   // Navigation states
   const [prevPost, setPrevPost] = useState<any>(null);
   const [nextPost, setNextPost] = useState<any>(null);
@@ -94,10 +98,14 @@ export const BlogDetail = () => {
             }
           }
 
-          // 1. Trigger dynamic View calculation increments securely in Firebase
-          await updateDoc(doc(db, 'blogs', docId), {
-            views: increment(1)
-          });
+          // 1. Trigger dynamic View calculation increments securely in Firebase only if unique visitor
+          const viewKey = `viewed_blog_${docId}`;
+          if (!localStorage.getItem(viewKey)) {
+            await updateDoc(doc(db, 'blogs', docId), {
+              views: increment(1)
+            });
+            localStorage.setItem(viewKey, 'true');
+          }
 
           // 2. Set up real-time listener for the blog document to catch live changes
           unsubBlogDoc = onSnapshot(doc(db, 'blogs', docId), (currentDocSnap) => {
@@ -180,23 +188,32 @@ export const BlogDetail = () => {
   const handleReaction = async (type: 'liked' | 'fired' | 'clapped') => {
     if (!blogId) return;
 
+    // Rate Limiting Activation Cooldown check (600ms throttle to prevent macro/fake spam clicks)
+    const now = Date.now();
+    const lastClick = reactionCooldownRef.current[type] || 0;
+    if (now - lastClick < 600) {
+      console.warn(`Reaction [${type}] click action throttled.`);
+      return;
+    }
+    reactionCooldownRef.current[type] = now;
+
     const key = `react_state_${blogId}`;
     const newReactions = { ...userReactions, [type]: !userReactions[type] };
     setUserReactions(newReactions);
     localStorage.setItem(key, JSON.stringify(newReactions));
 
     // Calculate dynamic changes
-    const increment = newReactions[type] ? 1 : -1;
+    const incrementAmount = newReactions[type] ? 1 : -1;
     let field = '';
     
     if (type === 'liked') {
-      setLikes(prev => prev + increment);
+      setLikes(prev => prev + incrementAmount);
       field = 'likes';
     } else if (type === 'fired') {
-      setFires(prev => prev + increment);
+      setFires(prev => prev + incrementAmount);
       field = 'fires';
     } else if (type === 'clapped') {
-      setClaps(prev => prev + increment);
+      setClaps(prev => prev + incrementAmount);
       field = 'claps';
     }
 
@@ -206,7 +223,7 @@ export const BlogDetail = () => {
       if (blogSnapshot.exists()) {
         const currentCount = blogSnapshot.data()[field] || 0;
         await updateDoc(blogRef, {
-          [field]: Math.max(0, currentCount + increment)
+          [field]: Math.max(0, currentCount + incrementAmount)
         });
       }
     } catch (err) {
@@ -218,6 +235,27 @@ export const BlogDetail = () => {
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentForm.name.trim() || !commentForm.text.trim() || !blogId) return;
+
+    // 1. Rate Limit Check (prevent commentary spamming, restict to once every 15 seconds)
+    const lastCommentTime = localStorage.getItem(`last_comment_time_${blogId}`);
+    const now = Date.now();
+    if (lastCommentTime && now - parseInt(lastCommentTime, 10) < 15000) {
+      alert("You are posting thoughts too fast. Please rest 15 seconds before sharing another insight.");
+      return;
+    }
+
+    // 2. Duplicate Check: Block duplicate submissions by the same user to prevent spam
+    const cleanedName = commentForm.name.trim().toLowerCase();
+    const cleanedText = commentForm.text.trim().toLowerCase();
+    const isDuplicate = comments.some(
+      (c) =>
+        (c.name || '').trim().toLowerCase() === cleanedName &&
+        (c.text || '').trim().toLowerCase() === cleanedText
+    );
+    if (isDuplicate) {
+      alert("This exact thought has already been submitted to this blog archive. Avoid duplicate postings!");
+      return;
+    }
 
     try {
       setAddingComment(true);
@@ -232,6 +270,7 @@ export const BlogDetail = () => {
         commentCount: increment(1)
       });
 
+      localStorage.setItem(`last_comment_time_${blogId}`, now.toString());
       setCommentForm({ name: '', text: '' });
       setCommentSuccess(true);
       setTimeout(() => setCommentSuccess(false), 3000);
@@ -431,7 +470,7 @@ export const BlogDetail = () => {
                 }`}
               >
                 <Heart className="w-5 h-5" />
-                <span className="text-xs font-mono">{likes}</span>
+                <span className="text-xs font-mono">{formatCount(likes)}</span>
               </button>
 
               <button 
@@ -443,7 +482,7 @@ export const BlogDetail = () => {
                 }`}
               >
                 <Flame className="w-5 h-5" />
-                <span className="text-xs font-mono">{fires}</span>
+                <span className="text-xs font-mono">{formatCount(fires)}</span>
               </button>
 
               <button 
@@ -455,7 +494,7 @@ export const BlogDetail = () => {
                 }`}
               >
                 <ThumbsUp className="w-5 h-5" />
-                <span className="text-xs font-mono">{claps}</span>
+                <span className="text-xs font-mono">{formatCount(claps)}</span>
               </button>
             </div>
 
@@ -492,10 +531,10 @@ export const BlogDetail = () => {
             </span>
             <span className="text-gray-700">|</span>
             <span className="text-emerald-400 font-bold uppercase flex items-center gap-1">
-              <Eye className="w-3.5 h-3.5" /> {blog.views || 0} Reader views
+              <Eye className="w-3.5 h-3.5" /> {formatCount(blog.views)} Reader views
             </span>
             <span className="text-red-400 font-bold uppercase flex items-center gap-1">
-              <MessageSquare className="w-3.5 h-3.5" /> {blog.commentCount || 0} Thoughts
+              <MessageSquare className="w-3.5 h-3.5" /> {formatCount(blog.commentCount)} Thoughts
             </span>
           </div>
 

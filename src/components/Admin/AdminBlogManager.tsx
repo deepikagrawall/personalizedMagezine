@@ -9,6 +9,7 @@ import Image from '@tiptap/extension-image';
 import slugify from 'slugify';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
+import { formatCount } from '../../utils';
 import { 
   FileText, Plus, Trash2, Edit3, Eye, Calendar, Sparkles, Check, Globe, Layers, AlertTriangle, 
   BarChart4, ArrowUpRight, TrendingUp, Heart, Send, CheckCircle, Search, ToggleLeft, ToggleRight, X, Image as ImageIcon, UploadCloud,
@@ -370,23 +371,23 @@ export const AdminBlogManager = () => {
       seoDescription: form.seoDescription.trim() || form.shortDescription.trim(),
       published: form.published,
       scheduledDate: form.scheduledDate,
-      views: Number(form.views) || 0,
-      likes: Number(form.likes) || 0,
-      fires: Number(form.fires) || 0,
-      claps: Number(form.claps) || 0,
-      commentCount: Number(form.commentCount) || 0,
       updatedAt: serverTimestamp(),
     };
 
     try {
       if (editingId) {
-        // Edit Blog existing
+        // Edit Blog existing - exclude views, likes, fires, claps and commentCount to prevent admin manipulation or overwrite
         await updateDoc(doc(db, 'blogs', editingId), blogData);
         alert('Blog updated successfully!');
       } else {
-        // Create new Blog
+        // Create new Blog (securely initialize historical engagement to 0)
         await addDoc(collection(db, 'blogs'), {
           ...blogData,
+          views: 0,
+          likes: 0,
+          fires: 0,
+          claps: 0,
+          commentCount: 0,
           createdAt: serverTimestamp()
         });
         alert('New blog created!');
@@ -912,75 +913,47 @@ export const AdminBlogManager = () => {
 
                     </div>
 
-                    {/* Dynamic Interaction Override Counters */}
-                    <div className="bg-[#121212]/50 p-6 rounded-2xl border border-white/5 space-y-4">
-                      <div>
-                        <span className="text-xs font-bold text-white block">Dynamic Metric Controllers</span>
-                        <span className="text-[10px] font-mono text-gray-500">Override live readership views, heart likes, claps (clips), fires, or comments.</span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                        {/* Views */}
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-mono tracking-widest text-[#777] uppercase block">Views</label>
-                          <input 
-                            type="number"
-                            min="0"
-                            value={form.views}
-                            onChange={e => setForm({ ...form, views: parseInt(e.target.value) || 0 })}
-                            className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:border-[var(--accent)] outline-none"
-                          />
+                    {/* Read-Only Authentic Engagement Stats Panel */}
+                    {(editingId || form.title) && (
+                      <div className="bg-[#121212]/30 p-5 rounded-2xl border border-white/5 space-y-3">
+                        <div>
+                          <span className="text-xs font-bold text-[#999] block tracking-wider uppercase">Authentic Engagement Stats</span>
+                          <span className="text-[10px] font-mono text-gray-500">Read-only historical performance updated securely through user activity alone.</span>
                         </div>
+                        
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-1">
+                          {/* Views */}
+                          <div className="bg-black/40 border border-white/5 p-3 rounded-xl flex flex-col gap-1">
+                            <span className="text-[9px] font-mono tracking-widest text-[#555] uppercase">Views</span>
+                            <span className="text-sm font-semibold text-white font-mono">{formatCount(form.views)}</span>
+                          </div>
 
-                        {/* Likes / Hearts */}
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-mono tracking-widest text-[#777] uppercase block">Hearts ❤️</label>
-                          <input 
-                            type="number"
-                            min="0"
-                            value={form.likes}
-                            onChange={e => setForm({ ...form, likes: parseInt(e.target.value) || 0 })}
-                            className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:border-[var(--accent)] outline-none"
-                          />
-                        </div>
+                          {/* Hearts */}
+                          <div className="bg-black/40 border border-white/5 p-3 rounded-xl flex flex-col gap-1">
+                            <span className="text-[9px] font-mono tracking-widest text-[#555] uppercase">Hearts ❤️</span>
+                            <span className="text-sm font-semibold text-white font-mono">{formatCount(form.likes)}</span>
+                          </div>
 
-                        {/* Claps */}
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-mono tracking-widest text-[#777] uppercase block">Claps 👏</label>
-                          <input 
-                            type="number"
-                            min="0"
-                            value={form.claps}
-                            onChange={e => setForm({ ...form, claps: parseInt(e.target.value) || 0 })}
-                            className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:border-[var(--accent)] outline-none"
-                          />
-                        </div>
+                          {/* Claps */}
+                          <div className="bg-black/40 border border-white/5 p-3 rounded-xl flex flex-col gap-1">
+                            <span className="text-[9px] font-mono tracking-widest text-[#555] uppercase">Claps 👏</span>
+                            <span className="text-sm font-semibold text-white font-mono">{formatCount(form.claps)}</span>
+                          </div>
 
-                        {/* Fires */}
-                        <div className="space-y-1.5">
-                          <label className="text-[9px] font-mono tracking-widest text-[#777] uppercase block">Fires 🔥</label>
-                          <input 
-                            type="number"
-                            min="0"
-                            value={form.fires}
-                            onChange={e => setForm({ ...form, fires: parseInt(e.target.value) || 0 })}
-                            className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:border-[var(--accent)] outline-none"
-                          />
-                        </div>
+                          {/* Fires */}
+                          <div className="bg-black/40 border border-white/5 p-3 rounded-xl flex flex-col gap-1">
+                            <span className="text-[9px] font-mono tracking-widest text-[#555] uppercase">Fires 🔥</span>
+                            <span className="text-sm font-semibold text-white font-mono">{formatCount(form.fires)}</span>
+                          </div>
 
-                        {/* Comments Count */}
-                        <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                          <label className="text-[9px] font-mono tracking-widest text-[#777] uppercase block">Comments 💬</label>
-                          <input 
-                            type="number"
-                            min="0"
-                            value={form.commentCount}
-                            onChange={e => setForm({ ...form, commentCount: parseInt(e.target.value) || 0 })}
-                            className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs font-mono text-white focus:border-[var(--accent)] outline-none"
-                          />
+                          {/* Comments */}
+                          <div className="bg-black/40 border border-white/5 p-3 rounded-xl flex flex-col gap-1 col-span-2 sm:col-span-1">
+                            <span className="text-[9px] font-mono tracking-widest text-[#555] uppercase">Comments 💬</span>
+                            <span className="text-sm font-semibold text-white font-mono">{formatCount(form.commentCount)}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                   </motion.div>
                 )}

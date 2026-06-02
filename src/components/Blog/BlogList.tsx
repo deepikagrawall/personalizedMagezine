@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Search, Calendar, Clock, ArrowRight, Sparkles, SlidersHorizontal, BookOpen, Layers, User, Eye, MessageSquare } from 'lucide-react';
 import { BlogNavbar } from './BlogNavbar';
 import { BlogFooter } from './BlogFooter';
+import { formatCount } from '../../utils';
 
 // Sample Authors
 const AUTHORS = [
@@ -373,10 +374,10 @@ export const BlogList = () => {
                               </span>
                               <div className="flex items-center gap-3">
                                 <span className="flex items-center gap-1" title="Views">
-                                  <Eye className="w-3.5 h-3.5 text-gray-600" /> {blog.views || 0}
+                                  <Eye className="w-3.5 h-3.5 text-gray-600" /> {formatCount(blog.views)}
                                 </span>
                                 <span className="flex items-center gap-1" title="Comments">
-                                  <MessageSquare className="w-3.5 h-3.5 text-red-500" /> {blog.commentCount || 0}
+                                  <MessageSquare className="w-3.5 h-3.5 text-red-500" /> {formatCount(blog.commentCount)}
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" /> {getReadingTime(blog.content)}
@@ -442,8 +443,8 @@ export const BlogList = () => {
                           <h4 className="text-xs font-semibold text-gray-300 group-hover:text-white transition-colors leading-snug line-clamp-2">
                             {post.title}
                           </h4>
-                          <span className="text-[9 px] font-mono text-gray-500 block pt-0.5">
-                            {post.views || 0} unique readers
+                          <span className="text-[9 px] font-mono text-[#777] block pt-0.5">
+                            {formatCount(post.views)} unique readers
                           </span>
                         </div>
                       </Link>
@@ -469,9 +470,9 @@ export const BlogList = () => {
                           <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
                             <span>{getReadingTime(post.content)}</span>
                             <span>•</span>
-                            <span className="text-red-400">❤️ {post.likes || 0}</span>
+                            <span className="text-red-400">❤️ {formatCount(post.likes)}</span>
                             <span>•</span>
-                            <span className="text-amber-400">💬 {post.commentCount || 0}</span>
+                            <span className="text-amber-400">💬 {formatCount(post.commentCount)}</span>
                           </div>
                         </div>
                         <div className="w-16 h-12 rounded-lg bg-[#222] overflow-hidden shrink-0">
