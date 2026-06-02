@@ -74,6 +74,48 @@
         "stats": { "type": "array", "items": { "type": "object" } },
         "footerTagline": { "type": "string" }
       }
+    },
+    "Blog": {
+      "title": "Blog",
+      "description": "A blog post article written by authors",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "slug": { "type": "string" },
+        "content": { "type": "string" },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "likes": { "type": "number" },
+        "fires": { "type": "number" },
+        "claps": { "type": "number" },
+        "views": { "type": "number" }
+      },
+      "required": ["title", "slug", "content"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment left on a blog post",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "text"]
+    },
+    "Newsletter": {
+      "title": "Newsletter",
+      "description": "A newsletter subscription entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "subscribedAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" }
+      },
+      "required": ["email"]
     }
   },
   "firestore": {
@@ -92,6 +134,18 @@
     "/settings/{settingId}": {
       "schema": "SiteSettings",
       "description": "Global application settings"
+    },
+    "/blogs/{blogId}": {
+      "schema": "Blog",
+      "description": "Collection of blog post articles"
+    },
+    "/blogs/{blogId}/comments/{commentId}": {
+      "schema": "Comment",
+      "description": "Collection of comments nested under a blog post article"
+    },
+    "/newsletter/{newsletterId}": {
+      "schema": "Newsletter",
+      "description": "Collection of newsletter subscriptions"
     }
   }
 }

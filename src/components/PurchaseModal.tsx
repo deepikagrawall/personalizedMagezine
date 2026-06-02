@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 interface PurchaseModalProps {
   product: {
@@ -46,6 +46,10 @@ export const PurchaseModal = ({ product, isOpen, onClose }: PurchaseModalProps) 
     if (!formData.name) newErrors.name = 'Full name is required';
     if (!formData.email) newErrors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email format';
+    
+    if (!formData.phone) newErrors.phone = 'Phone number is required';
+    else if (!/^\+?[\d\s-]{10,}$/.test(formData.phone)) newErrors.phone = 'Invalid phone format';
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -56,6 +60,26 @@ export const PurchaseModal = ({ product, isOpen, onClose }: PurchaseModalProps) 
     setLoading(true);
     
     try {
+      // Check if request already exists
+      const q = query(
+        collection(db, 'requests'),
+        where('productId', '==', product.id),
+        where('phone', '==', formData.phone),
+        where('email', '==', formData.email)
+      );
+      const querySnapshot = await getDocs(q);
+      
+      const isDuplicate = querySnapshot.docs.some(doc => {
+        const data = doc.data();
+        return ['pending', 'contacted'].includes(data.status);
+      });
+
+      if (isDuplicate) {
+        setErrors({ ...errors, submit: 'A request with this phone number and email has already been received for this product and is pending or contacted.' });
+        setLoading(false);
+        return;
+      }
+
       await addDoc(collection(db, 'requests'), {
         ...formData,
         productId: product.id,
@@ -70,7 +94,7 @@ export const PurchaseModal = ({ product, isOpen, onClose }: PurchaseModalProps) 
       }, 1500);
     } catch (err) {
       console.error(err);
-      alert('Error submitting request');
+      setErrors({ ...errors, submit: 'Error submitting request. Please try again.' });
       setLoading(false);
     }
   };
@@ -144,13 +168,14 @@ export const PurchaseModal = ({ product, isOpen, onClose }: PurchaseModalProps) 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Phone Number</label>
+                    <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Phone Number *</label>
                     <input 
-                      className="w-full bg-[#0A0A0A] border border-[#222] rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all"
+                      className={`w-full bg-[#0A0A0A] border ${errors.phone ? 'border-[var(--accent)]' : 'border-[#222]'} rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-[var(--accent)] transition-all`}
                       placeholder="+91 XXXXX XXXXX"
                       value={formData.phone}
                       onChange={e => setFormData({...formData, phone: e.target.value})}
                     />
+                    {errors.phone && <p className="text-[var(--accent)] text-[9px] uppercase font-bold">{errors.phone}</p>}
                   </div>
                   <div className="space-y-1">
                     <label className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">Occasion Type</label>
@@ -215,6 +240,8 @@ export const PurchaseModal = ({ product, isOpen, onClose }: PurchaseModalProps) 
                     onChange={e => setFormData({...formData, message: e.target.value})}
                   />
                 </div>
+
+                {errors.submit && <p className="text-[var(--accent)] text-[11px] font-bold text-center bg-[#1a0f0f] p-2 rounded">{errors.submit}</p>}
 
                 <button 
                   type="submit"

@@ -89,6 +89,39 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    match /blogs/{blogId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        // Non-admins can only increment views, likes, fires, claps, commentCount
+        incoming().diff(existing()).affectedKeys().hasOnly(['views', 'likes', 'fires', 'claps', 'commentCount']) &&
+        (!incoming().keys().hasAny(['views']) || incoming().views is number) &&
+        (!incoming().keys().hasAny(['likes']) || incoming().likes is number) &&
+        (!incoming().keys().hasAny(['fires']) || incoming().fires is number) &&
+        (!incoming().keys().hasAny(['claps']) || incoming().claps is number) &&
+        (!incoming().keys().hasAny(['commentCount']) || incoming().commentCount is number)
+      );
+    }
+
+    match /blogs/{blogId}/comments/{commentId} {
+      allow read: if true;
+      allow create: if incoming().keys().hasAll(['name', 'text', 'createdAt']) &&
+                    incoming().name is string && incoming().name.size() <= 100 &&
+                    incoming().text is string && incoming().text.size() <= 1000 &&
+                    incoming().createdAt == request.time &&
+                    incoming().keys().size() == 3;
+      allow update, delete: if isAdmin();
+    }
+
+    match /newsletter/{newsletterId} {
+      allow create: if incoming().keys().hasAll(['email', 'subscribedAt', 'source']) &&
+                    incoming().email is string && incoming().email.size() <= 150 &&
+                    incoming().subscribedAt == request.time &&
+                    incoming().source is string && incoming().source.size() <= 50 &&
+                    incoming().keys().size() == 3;
+      allow read, update, delete: if isAdmin();
+    }
+
     match /settings/{settingId} {
       allow read: if true;
       allow write: if isAdmin() && isValidSiteSettings(incoming());

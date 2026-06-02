@@ -222,6 +222,9 @@ export default function App() {
     footerTagline: string;
     howItWorks: { title: string; subtitle: string; imageUrl: string; steps: { num: string; title: string; desc: string }[] };
     curatedSelection: { subtitle: string; title: string; description: string; imageUrl: string };
+    footer?: any;
+    navbar?: any;
+    pricing?: any;
   }>({
     siteName: 'ARTIFACT',
     accentColor: '#FF3B3B',
@@ -698,7 +701,7 @@ export default function App() {
                       '--rot': `${-12 + (i * 8)}deg`,
                       zIndex: i,
                       transform: `translateX(${offset * (total > 3 ? (window.innerWidth < 768 ? 30 : 50) : (window.innerWidth < 768 ? 45 : 80))}px) rotateY(${-20 + (i * 10)}deg) translateY(${Math.abs(offset) * 12}px) rotateZ(${offset * 4}deg)`,
-                    }}
+                    } as React.CSSProperties}
                     onClick={() => featured && setSelectedProduct(featured)}
                   >
                     <motion.div

@@ -11,7 +11,7 @@ export const Admin = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'products' | 'requests' | 'settings' | 'netflix' | 'paytm' | 'howItWorks' | 'curatedSelection' | 'pricing'>('products');
+  const [activeTab, setActiveTab] = useState<any>('products');
   
   // Media Upload States
   const [uploadingHowItWorks, setUploadingHowItWorks] = useState(false);
@@ -22,6 +22,7 @@ export const Admin = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [heroForm, setHeroForm] = useState<any>({
     siteName: 'ARTIFACT',
+    accentColor: '#FF3B3B',
     tagline: 'Premium Digital Artifacts',
     titlePart1: 'CRAFTING MOMENTS',
     titlePart2: 'INTO DIGITAL ART.',
@@ -474,7 +475,8 @@ export const Admin = () => {
       isNew: true,
       isBest: false,
       pdfUrl: '',
-      imageUrl: ''
+      imageUrl: '',
+      whatsInside: ''
     });
     setPdfFile(null);
     setImageFile(null);
@@ -509,7 +511,8 @@ export const Admin = () => {
       isNew: p.isNew ?? true,
       isBest: p.isBest ?? false,
       pdfUrl: p.pdfUrl || '',
-      imageUrl: p.imageUrl || ''
+      imageUrl: p.imageUrl || '',
+      whatsInside: Array.isArray(p.whatsInside) ? p.whatsInside.join(', ') : (p.whatsInside || '')
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1188,7 +1191,16 @@ export const Admin = () => {
 
                 <div className="bg-[#111] p-8 rounded-2xl border border-white/5 space-y-6">
                   <h3 className="text-xs uppercase tracking-widest font-bold text-[#FF3B3B] font-mono">Hero Banner Display & Copy</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="space-y-1">
+                          <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Accent Color</label>
+                          <input 
+                              type="color"
+                              className="w-full bg-black border border-white/10 rounded-lg p-1 h-10"
+                              value={heroForm.accentColor || '#FF3B3B'}
+                              onChange={e => setHeroForm({...heroForm, accentColor: e.target.value})}
+                          />
+                      </div>
                       <div className="space-y-1">
                           <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Heading Part 1</label>
                           <input 
@@ -1214,7 +1226,6 @@ export const Admin = () => {
                           />
                       </div>
                   </div>
-
                   <div className="space-y-2">
                       <label className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Hero Sub-description</label>
                       <textarea 
